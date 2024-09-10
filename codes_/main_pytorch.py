@@ -27,11 +27,11 @@ device = torch.device(f"cuda:{int(sys.argv[1])}" if torch.cuda.is_available() el
 save = True
 seq_flag = False if int(sys.argv[2]) == 0 else True
 noise = True
-early_stop = False if int(sys.argv[14]) == 0 else True
-trial = int(sys.argv[3])
+early_stop = False if int(sys.argv[3]) == 0 else True
+trial = int(sys.argv[4])
 
 rfs_type = 'somatic'
-model_type = int(sys.argv[4])
+model_type = int(sys.argv[5])
 sparse = False
 input_sample = None
 if model_type == 0:
@@ -94,9 +94,9 @@ elif model_type == 11:
     sparse = True
     input_sample = 'all_to_all'
 
-sigma = float(sys.argv[5])
+sigma = float(sys.argv[6])
 # Get the data
-datatype = sys.argv[6]
+datatype = sys.argv[7]
 batch_size = 128
 data, labels, img_height, img_width, channels = get_data(
     validation_split=0.1,
@@ -114,12 +114,12 @@ x_train, x_val, x_test = data['train'], data['val'], data['test']
 y_train, y_val, y_test = labels['train'], labels['val'], labels['test']
 
 # Model architectures
-num_dends, num_soma = int(sys.argv[7]), int(sys.argv[8])
+num_dends, num_soma = int(sys.argv[8]), int(sys.argv[9])
 num_classes = len(set(y_train))
-num_layers = int(sys.argv[9])
+num_layers = int(sys.argv[10])
 dends = num_layers*[num_dends]
 soma = num_layers*[num_soma]
-synapses = int(sys.argv[10])
+synapses = int(sys.argv[11])
 
 # Build the masks
 Masks = make_masks(
@@ -148,8 +148,8 @@ fname_model = get_model_name(
     input_sample
 )
 
-drop_flag = False if int(sys.argv[11]) == 0 else True
-rate_of_drop = float(sys.argv[12])
+drop_flag = False if int(sys.argv[12]) == 0 else True
+rate_of_drop = float(sys.argv[13])
 # Set the foldername extension
 if seq_flag:
     file_tag = "_sequential"
@@ -172,6 +172,9 @@ model = get_model(
     rate=rate_of_drop,
 )
 
+# Attach the model to device
+model.to(device)
+
 # Apply the masks to initial weights
 PARAMS = model.get_weights()
 PARAMSmod = [PARAMS[i]*Masks[i] for i in range(len(PARAMS))]
@@ -181,7 +184,7 @@ model.set_weights(PARAMSmod)
 model_untrained = copy.deepcopy(model)
 
 # Instantiate the optimizer and the loss function
-lr = float(sys.argv[13])
+lr = float(sys.argv[14])
 optimizer = keras.optimizers.Adam(learning_rate=lr)
 loss_fn = keras.losses.SparseCategoricalCrossentropy(from_logits=False)
 

@@ -3,6 +3,7 @@ DIRPARAMS=$1
 echo $DIRPARAMS
 GPU_ID=0 # the GPU to be used
 seq_flag=1 # sequnetial learning flag (no-sequential)
+estop_flag=0 # early stopping flag
 sigma=0.0 # noise
 data=fmnist # dataset to train on
 nl=1 # number of dendro-somatic layers (2 hidden layers)

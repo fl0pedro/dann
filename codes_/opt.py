@@ -8,12 +8,9 @@ Created on Sun Mar 14 09:37:20 2021.
 
 import os
 import time
-import jax
-import torch
 import keras
 import struct
 import numpy as np
-import tensorflow as tf
 
 from keras.utils import Progbar
 
@@ -595,6 +592,8 @@ def custom_train_loop(
         x_train, y_train, x_val, y_val, x_test, y_test,
         shuffle=True, early_stop=False, patience=0
     ):
+
+    import tensorflow as tf
     """
     Custom training loop for better handling and zeroing out gradients based
     on masks.
@@ -838,8 +837,10 @@ def custom_train_loop(
 def custom_train_loop_torch(
         model, loss_fn, optimizer, Masks, batch_size, num_epochs,
         x_train, y_train, x_val, y_val, x_test, y_test,
-        shuffle=True, early_stop=False, patience=0,device='cpu'
+        shuffle=True, early_stop=False, patience=0, device='cpu'
     ):
+    
+    import torch
     """
     Custom training loop for better handling and zeroing out gradients based
     on masks.
@@ -918,7 +919,6 @@ def custom_train_loop_torch(
         test_dataset, batch_size=batch_size, shuffle=False
     )
 
-
     # Prepare the metrics
     # Accuracy metrics
     train_acc_metric = keras.metrics.SparseCategoricalAccuracy()
@@ -956,7 +956,7 @@ def custom_train_loop_torch(
             train_logits = model(x_batch_train, training=True)
             train_loss = loss_fn(y_batch_train, train_logits)
             running_train_loss += train_loss.cpu().detach().numpy()
-
+            # Update the progbar
             progBar.update(step, values=[('train_loss', train_loss)])
 
             # Backward pass
@@ -977,14 +977,13 @@ def custom_train_loop_torch(
             with torch.no_grad():
                 optimizer.apply(gradients_, trainable_weights)
 
+            # Update training metric.
             train_acc_metric.update_state(y_batch_train, train_logits)
 
         # Display metrics at the end of each epoch.
         train_acc = train_acc_metric.result()
         print(f"\nTraining acc over epoch: {float(train_acc):.4f}")
 
-        # Display metrics at the end of each epoch.
-        train_acc = train_acc_metric.result()
         train_acc_list.append(train_acc.cpu().detach().numpy())
         train_loss_list.append(running_train_loss / (step + 1))
         # Reset training metrics at the end of each epoch
@@ -999,6 +998,13 @@ def custom_train_loop_torch(
             # Update val metrics
             val_acc_metric.update_state(y_batch_val, val_logits)
 
+        # Display metrics at the end of each epoch.
+        val_acc = val_acc_metric.result()
+        val_acc_list.append(val_acc.cpu().detach().numpy())
+        val_loss_list.append(running_val_loss / (step + 1))
+        # Reset training metrics at the end of each epoch
+        val_acc_metric.reset_state()
+
         # Update progBar with val_loss
         progBar.update(
             progbar_,
@@ -1008,12 +1014,6 @@ def custom_train_loop_torch(
             ],
             finalize=True
         )
-
-        # calculate and store validation loss and accuracy
-        val_acc = val_acc_metric.result()
-        val_acc_list.append(val_acc.cpu().detach().numpy())
-        val_loss_list.append(running_val_loss / (step + 1))
-        val_acc_metric.reset_state()
 
         print(f"\nTraining acc over epoch: {float(train_acc_list[-1]):.4f}, "
               f"Validation acc over epoch: {float(val_acc_list[-1]):.4f}")
@@ -1054,7 +1054,8 @@ def custom_train_loop_torch(
         finalize=True
     )
 
-    test_acc = test_acc_metric.result().detach().numpy()
+    test_acc = test_acc_metric.result().cpu().detach().numpy()
+    test_loss = running_test_loss / (step + 1)
     test_acc_metric.reset_state()
 
     print(f"Test acc: {float(test_acc):.4f} | "
@@ -1080,6 +1081,9 @@ def custom_train_loop_jax(
         x_train, y_train, x_val, y_val, x_test, y_test,
         shuffle=True, early_stop=False, patience=0
     ):
+
+    import jax
+    import tensorflow as tf
     """
     Custom training loop for better handling and zeroing out gradients based
     on masks.
@@ -1273,8 +1277,7 @@ def custom_train_loop_jax(
             train_loss, train_state = train_step(train_state, train_data)
             running_train_loss += train_loss
             # Update the progbar
-            values = [('train_loss', train_loss)]
-            progBar.update(step, values=values)
+            progBar.update(step, values=[('train_loss', train_loss)])
 
         _, _, _, metric_variables = train_state
         for variable, value in zip(train_acc_metric.variables, metric_variables):
