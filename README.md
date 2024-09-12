@@ -13,7 +13,7 @@ You can run the files `.py` with `python figure_2.py`, for example, or train the
 
 
 ## **GPU support**
-You need to install NVIDIA driver, CUDA 12.1 and then install tensorflow, pytorch and jax with cuda compatibility.
+You need to install NVIDIA driver, CUDA 12.2 and then install tensorflow, pytorch and jax with cuda compatibility.
 
 You can find your CUDA version with the command:
 ```nvcc --version```
