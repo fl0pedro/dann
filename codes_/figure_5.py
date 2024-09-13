@@ -207,3 +207,62 @@ fig.savefig(
     dpi=600
 )
 fig.show()
+
+
+
+
+# Statistical analysis
+import pingouin as pg
+
+aov_sil = pg.anova(
+    data=df_scores_,
+    dv='silhouette',
+    between=['model', 'layer'],
+    detailed=True
+)
+
+pair_sil = pg.pairwise_tests(
+    data=df_scores_,
+    dv='silhouette',
+    between=['model','layer'],
+    padjust='bonf'
+)
+
+print("\nStats in Silhouette")
+print(aov_sil)
+print(pair_sil)
+
+aov_nh = pg.anova(
+    data=df_scores_,
+    dv='nh_score',
+    between=['model', 'layer'],
+    detailed=True
+)
+pair_nh = pg.pairwise_tests(
+    data=df_scores_,
+    dv='nh_score',
+    between=['model','layer'],
+    padjust='bonf'
+)
+
+print("\nStats in nh score")
+print(aov_nh)
+print(pair_nh)
+
+aov_trust = pg.anova(
+    data=df_scores_,
+    dv='trustworthiness',
+    between=['model', 'layer'],
+    detailed=True
+)
+
+pair_trust = pg.pairwise_tests(
+    data=df_scores_,
+    dv='trustworthiness',
+    between=['model','layer'],
+    padjust='bonf'
+)
+
+print("\nStats in trustworthiness")
+print(aov_trust)
+print(pair_trust)
