@@ -144,7 +144,7 @@ def fix_names(df):
     df = df.replace(['dend_ann_global_rfs'], 'dANN-GRF')
     df = df.replace(['dend_ann_local_rfs'], 'dANN-LRF')
     df = df.replace(['dend_ann_random'], 'dANN-R')
-    df = df.replace(['dend_ann_all_to_all'], 'dANN-F')
+    df = df.replace(['dend_ann_all_to_all'], 'pdANN')
     df = df.replace(['vanilla_ann'], 'vANN')
     df = df.replace(['vanilla_ann_random'], 'vANN-R')
     df = df.replace(['vanilla_ann_local_rfs'], 'vANN-LRF')
@@ -152,7 +152,7 @@ def fix_names(df):
     df = df.replace(['sparse_ann'], 'sANN')
     df = df.replace(['sparse_ann_local_rfs'], 'sANN-LRF')
     df = df.replace(['sparse_ann_global_rfs'], 'sANN-GRF')
-    df = df.replace(['sparse_ann_all_to_all'], 'sANN-F')
+    df = df.replace(['sparse_ann_all_to_all'], 'psANN')
     df = df.replace(['vanilla_ann_dropout_0.2'], 'vANN-0.2')
     df = df.replace(['vanilla_ann_dropout_0.5'], 'vANN-0.5')
     df = df.replace(['vanilla_ann_dropout_0.8'], 'vANN-0.8')
@@ -437,7 +437,7 @@ def short_to_long_names(names):
             long_names.append("dend_ann_local_rfs")
         elif n == "dANN-GRF":
             long_names.append("dend_ann_global_rfs")
-        elif n == "dANN-F":
+        elif n == "pdANN":
             long_names.append("dend_ann_all_to_all")
         elif n == "sANN":
             long_names.append("sparse_ann")
@@ -445,7 +445,7 @@ def short_to_long_names(names):
             long_names.append("sparse_ann_local_rfs")
         elif n == "sANN-GRF":
             long_names.append("sparse_ann_global_rfs")
-        elif n == "sANN-F":
+        elif n == "psANN":
             long_names.append("sparse_ann_all_to_all")
         elif n == "vANN-R":
             long_names.append("vanilla_ann_random")

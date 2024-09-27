@@ -70,7 +70,7 @@ models_to_keep = [
     'dANN-R',
     'dANN-LRF',
     'dANN-GRF',
-    'dANN-F',
+    'pdANN',
     'vANN',
 ]
 for key in DATA.keys():
@@ -168,7 +168,7 @@ fig.show()
 # Calculate the losses, accuracies etc for Table 1.
 df_ = DATA["best_loss"]
 metric = "test_acc"
-for m in ['dANN-R', 'dANN-LRF', 'dANN-GRF', 'dANN-F', 'vANN']:
+for m in ['dANN-R', 'dANN-LRF', 'dANN-GRF', 'pdANN', 'vANN']:
     print(m)
     for d in ['mnist']:
         print(np.round(np.mean(df_[(df_['model'] == m) & (df_['data'] == d)][metric]),3))

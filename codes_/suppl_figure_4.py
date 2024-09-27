@@ -70,7 +70,7 @@ models_to_keep = [
     'dANN-R',
     'dANN-LRF',
     'dANN-GRF',
-    'dANN-F',
+    'pdANN',
     'vANN-0.01',
     'vANN-0.0001',
     'vANN',

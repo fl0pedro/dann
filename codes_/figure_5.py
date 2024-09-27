@@ -1,22 +1,20 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Fri Feb 23 12:16:41 2024
+Created on Tue Feb 20 11:25:37 2024
 
 @author: spiros
 """
+
 import os
+import pickle
 import pathlib
-import numpy as np
-import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib.transforms as mtransforms
 
-from opt import get_data
-from plotting_functions import my_style
-from plotting_functions import get_class_names
-from plotting_functions import calculate_proj_scores
+from scipy.stats import skew, kurtosis
+from plotting_functions import my_style, draw_text_metrics, short_to_long_names
 
 
 # Set the seaborn style and color palette
@@ -26,168 +24,253 @@ plt.rcParams.update(my_style())
 palette = ['#8de5a1', '#ff9f9b', '#a1c9f4', '#b5b5ac']
 palette2 = ['#409140', '#e06666', '#7abacc', '#8d8d8d']
 
+datatype = 'fmnist'
 dirname_figs = '../FinalFigs_manuscript'
 if not os.path.exists(f"{dirname_figs}"):
     os.mkdir(f"{dirname_figs}")
 
-datatype = 'fmnist'
-dim_method = 'tsne'
 seq = False
 seq_tag = "_sequential" if seq else ""
-
-# Keep models to plot, i.e., dend ANN and vanilla ANN.
-model_to_keep = [
-    'dANN-R',
-    'dANN-LRF',
-    'dANN-GRF',
-    'vANN'
-]
-
-data, labels, img_height, img_width, channels = get_data(0.1, datatype)
-n_data = labels['test'].shape[0] // 5
-x_test = data['test'][:n_data]
-y_test = labels['test'][:n_data]
-n_classes = len(set(y_test))
-y_test_class_names = get_class_names(datatype, y_test)
-
-
-sigma = 0.0
-df_scores_trained_all = None
-
-reps = 10
-for nrep in range(1, reps+1):
-    df_scores_trained, embeddings_dict = calculate_proj_scores(
-        model_to_keep, "../DATA/", sigma=0.0,
-        dim_method=dim_method, datatype=datatype,
-        seq_tag=seq_tag, learn_phase="trained", rep=nrep)
-    df_scores_trained['repetition'] = nrep
-
-    df_scores_trained_all = pd.concat([df_scores_trained_all, df_scores_trained])
+num_layers = 1
+data_dir = "../DATA/"
+dirname = f"{data_dir}/results_{datatype}_{num_layers}_layer{seq_tag}/"
 
 # Create the figure
 fig = plt.figure(
     num=5,
-    figsize=(8.27*0.98, 11.69*0.7),
-    layout='constrained'
-    )
+    figsize=(8.27*0.98, 11.69*0.8),
+    layout='tight'
+)
 
+# Split the figure in top and bottom
+# Separate in three subfigures - one top, one middle, and one bottom
 subfigs = fig.subfigures(
-    nrows=1, ncols=2,
-    width_ratios=[3, 1]
+    nrows=3, ncols=1,
+    height_ratios=[2, .8, .8],
     )
 
-# create the mosaic
-axd = subfigs[0].subplot_mosaic(
-    [["A", "B",],
-     ["C", "D",],
-     ["E", "F",],
-     ["G", "H",],],
-    sharex=True,
+# Create the top left subfigure
+mosaic = [
+    ["A", "B", "C", "D"],
+    ["E", "F", "G", "H"],
+    ["I", "J", "K", "L"]
+]
+
+axt = subfigs[0].subplot_mosaic(
+    mosaic,
     sharey=True,
+    sharex=True,
     gridspec_kw={
-    "hspace": 0.2,
-    "wspace":0.2
+        "hspace": 0.5,
     },
 )
 
-# add panel labels
-mos = ["A", "B", "C", "D"]
-mos_ = ["A", "C", "E", "G"]
-axd_ = {k: v for k, v in axd.items() if k in mos_}
-for i, (label, ax) in enumerate(axd_.items()):
-    # label physical distance to the left and up:
-    trans = mtransforms.ScaledTranslation(-20/72, 7/72, fig.dpi_scale_trans)
-    ax.text(0.0, 1.0, mos[i], transform=ax.transAxes + trans,
-            fontsize='large', va='bottom')
+# label physical distance to the left and up:
+trans = mtransforms.ScaledTranslation(
+    -20/72, 7/72,
+    fig.dpi_scale_trans
+)
+
+axt["A"].text(
+    0.0, 1.0, "A",
+    transform=axt["A"].transAxes + trans,
+    fontsize='large',
+    va='bottom'
+)
+
+# load weights of best models
+fname_weights = f"{data_dir}/weights_best_models{seq_tag}.pkl"
+with open(fname_weights, 'rb') as file:
+    weights_loaded = pickle.load(file)
+
+w_dend_all = weights_loaded['dendrites']
+w_soma_all = weights_loaded['soma']
+w_out_all = weights_loaded['output']
+
+# Keep specific models
+model_names = ['dANN-R', 'dANN-LRF', 'dANN-GRF', 'vANN']
+models = short_to_long_names(model_names)
+
+# Plot the results
+xloc, yloc = 0.97, 0.97
+for i, (model_type, (label, ax)) in enumerate(zip(models, list(axt.items())[:4])):
+    sns.histplot(
+        w_dend_all[f'{model_type}'].flatten(),
+        bins=20,
+        kde=True,
+        stat='probability',
+        ax=ax,
+        color=palette[i],
+    )
+    ax.set_title(f"{model_names[i]}")
+    ax.set_ylabel('probability')
+    ax.set_xticks([])
+    ax.set_xticklabels([])
+    w_ = w_dend_all[f'{model_type}'].flatten()
+    k = kurtosis(w_)
+    s = skew(w_)
+    r = max(w_) - min(w_)
+    draw_text_metrics(ax, xloc, yloc, k, 'Kurtosis')
+    draw_text_metrics(ax, xloc, yloc-0.2, s, 'Skewness')
+    draw_text_metrics(ax, xloc, yloc-0.4, r, 'Range')
 
 
-for i, (layer, ax) in enumerate(axd.items()):
-    k = 2 if i % 2 == 0 else 4
-    embeddings = embeddings_dict[model_to_keep[i // 2]]['trial_1'][f'layer_{k}']
-    sns.scatterplot(
-        x=embeddings[:, 0],
-        y=embeddings[:, 1],
-        s=7,
-        hue=y_test_class_names,
-        palette="tab10",
-        legend=False,
-        ax=ax)
-    ax.set_xlabel(f"{dim_method.upper()} dim 1")
-    ax.set_ylabel(f"{dim_method.upper()} dim 2")
-    ax.set_title(model_to_keep[i // 2])
+# Plot the results
+for i, (model_type, (label, ax)) in enumerate(zip(models, list(axt.items())[4:8])):
+    sns.histplot(
+        w_soma_all[f'{model_type}'].flatten(),
+        bins=20,
+        kde=True,
+        stat='probability',
+        ax=ax,
+        color=palette2[i],
+    )
+    ax.set_xlabel('weights')
+    ax.set_ylabel('probability')
+    ax.set_xticks([-2.5, 0.0, 2.5])
+    ax.set_xticklabels([-2.5, 0.0, 2.5])
+    w_ = w_soma_all[f'{model_type}'].flatten()
+    k = kurtosis(w_)
+    s = skew(w_)
+    r = max(w_) - min(w_)
+    draw_text_metrics(ax, xloc, yloc, k, 'Kurtosis')
+    draw_text_metrics(ax, xloc, yloc-0.2, s, 'Skewness')
+    draw_text_metrics(ax, xloc, yloc-0.4, r, 'Range')
 
+# Plot the results
+for i, (model_type, (label, ax)) in enumerate(zip(models, list(axt.items())[8:])):
+    sns.histplot(
+        w_out_all[f'{model_type}'].flatten(),
+        bins=20,
+        kde=True,
+        stat='probability',
+        ax=ax,
+        color=palette2[i],
+    )
+    ax.set_xlabel('weights')
+    ax.set_ylabel('probability')
+    ax.set_xticks([-2.5, 0.0, 2.5])
+    ax.set_xticklabels([-2.5, 0.0, 2.5])
+    w_ = w_out_all[f'{model_type}'].flatten()
+    k = kurtosis(w_)
+    s = skew(w_)
+    r = max(w_) - min(w_)
+    draw_text_metrics(ax, xloc, yloc, k, 'Kurtosis')
+    draw_text_metrics(ax, xloc, yloc-0.2, s, 'Skewness')
+    draw_text_metrics(ax, xloc, yloc-0.4, r, 'Range')
 
-df_scores_trained = df_scores_trained_all[df_scores_trained_all['layer'] != 'output']
-df_scores_ = df_scores_trained.copy()
-df_scores_['model+layer'] = df_scores_['model'] + df_scores_['layer']
+# middle left subfigure
+# load entropies of best models
+fname_entropies = f"{data_dir}/entropies_best_models{seq_tag}.pkl"
+with open(fname_entropies, 'rb') as file:
+    entropies_loaded = pickle.load(file)
 
-# make a combined palette
-p = np.concatenate([np.array(palette).reshape(1,-1),
-                    np.array(palette2).reshape(1,-1)],
-                   axis=0)
-palette3 = list(p.T.flatten())
+h_dend_all = entropies_loaded['dendrites']
+h_soma_all = entropies_loaded['soma']
 
-# create the mosaic
-axd = subfigs[1].subplot_mosaic(
-    [["E"], ["F"], ["G"]],
+mosaic = [["A", "B", "C", "D"]]
+axm = subfigs[1].subplot_mosaic(
+    mosaic, sharey=True, sharex=True,
     gridspec_kw={
-    "hspace": 0.2,
-    "wspace":0.2
+        "hspace": 0.5,
+    },
+)
+trans = mtransforms.ScaledTranslation(
+    -20/72, 7/72,
+    fig.dpi_scale_trans
+)
+
+axm["A"].text(
+    0.0, 1.0, "B",
+    transform=axm["A"].transAxes + trans,
+    fontsize='large',
+    va='bottom'
+)
+
+for i, (model_type, (label, ax)) in enumerate(zip(models, axm.items())):
+    sns.histplot(
+        h_dend_all[f'{model_type}'],
+        bins=20,
+        kde=True,
+        stat='probability',
+        ax=ax,
+        color=palette[i],
+        label='dendritic',
+        kde_kws=dict(bw_adjust=3),
+    )
+    sns.histplot(
+        h_soma_all[f'{model_type}'],
+        bins=20,
+        kde=True,
+        stat='probability',
+        ax=ax,
+        color=palette2[i],
+        label='somatic',
+        alpha=0.4,
+        line_kws={'alpha': 0.6},
+        kde_kws=dict(bw_adjust=3),
+    )
+    ax.set_xlabel('entropy (bits)')
+    ax.set_ylabel('probability')
+    ax.set_xticks([0, 1, 2, 3])
+    ax.set_xticklabels([0, 1, 2, 3])
+    ax.legend() if i == 3 else None
+
+# Make selectivity histograms - bottom left subfigure
+fname_selectivity = f"{data_dir}/selectivity_best_models{seq_tag}.pkl"
+with open(fname_selectivity, 'rb') as file:
+    slectivity_loaded = pickle.load(file)
+
+s_dend_all = slectivity_loaded['dendrites']
+s_soma_all = slectivity_loaded['soma']
+
+mosaic = [["A", "B", "C", "D"]]
+axb = subfigs[2].subplot_mosaic(
+    mosaic,
+    sharey=True,
+    sharex=True,
+    gridspec_kw={
+        "hspace": 0.5,
     },
 )
 
-# add panel labels
-mos = ["E", "F", "G"]
-for i, (label, ax) in enumerate(axd.items()):
-    # label physical distance to the left and up:
-    trans = mtransforms.ScaledTranslation(-20/72, 7/72, fig.dpi_scale_trans)
-    ax.text(0.0, 1.0, mos[i], transform=ax.transAxes + trans,
-            fontsize='large', va='bottom')
-
-panel = "E"
-sns.barplot(
-    data=df_scores_,
-    x=None,
-    y="silhouette",
-    hue="model+layer",
-    legend=False,
-    palette=palette3,
-    ax=axd[panel]
+trans = mtransforms.ScaledTranslation(
+    -20/72, 7/72,
+    fig.dpi_scale_trans
 )
-axd[panel].set_xticks([])
-axd[panel].set_xticklabels([])
-axd[panel].set_ylabel('Silhouette score')
-axd[panel].set_ylim([0.0, 0.35])
 
-panel = "F"
-sns.barplot(
-    data=df_scores_,
-    x=None,
-    y="nh_score",
-    hue="model+layer",
-    legend=False,
-    palette=palette3,
-    ax=axd[panel]
+axb["A"].text(
+    0.0, 1.0, "C",
+    transform=axb["A"].transAxes + trans,
+    fontsize='large',
+    va='bottom'
 )
-axd[panel].set_xticks([])
-axd[panel].set_xticklabels([])
-axd[panel].set_ylabel('NH score')
-axd[panel].set_ylim([0.6, 0.85])
 
-panel = "G"
-sns.barplot(
-    data=df_scores_,
-    x=None,
-    y="trustworthiness",
-    hue="model+layer",
-    legend=False,
-    palette=palette3,
-    ax=axd[panel]
-)
-axd[panel].set_xticks([])
-axd[panel].set_xticklabels([])
-axd[panel].set_ylabel('trustworthiness')
-axd[panel].set_ylim([0.96, 1.0])
+n_classes = 10 if datatype != "emnist" else 47
+for i, (model_type, (label, ax)) in enumerate(zip(models, axb.items())):
+    sns.histplot(
+        [x for x in s_dend_all[f'{model_type}'] if x > 0],
+        bins=n_classes,
+        kde=False,
+        stat='probability',
+        color=palette[i],
+        label='dendritic',
+        ax=ax,
+    )
+    sns.histplot(
+        [x for x in s_soma_all[f'{model_type}'] if x > 0],
+        bins=n_classes,
+        kde=False,
+        stat='probability',
+        color=palette2[i],
+        label='somatic',
+        ax=ax,
+    )
+    ax.set_xlabel('classes')
+    ax.set_ylabel('probability')
+    xticks = [1, 5, 10] if datatype != 'emnist' else [1, 23, 47]
+    ax.set_xticks(xticks)
+    ax.set_xticklabels(xticks)
 
 # fig final format and save
 figname = f"{dirname_figs}/figure_5"
@@ -207,62 +290,3 @@ fig.savefig(
     dpi=600
 )
 fig.show()
-
-
-
-
-# Statistical analysis
-import pingouin as pg
-
-aov_sil = pg.anova(
-    data=df_scores_,
-    dv='silhouette',
-    between=['model', 'layer'],
-    detailed=True
-)
-
-pair_sil = pg.pairwise_tests(
-    data=df_scores_,
-    dv='silhouette',
-    between=['model','layer'],
-    padjust='bonf'
-)
-
-print("\nStats in Silhouette")
-print(aov_sil)
-print(pair_sil)
-
-aov_nh = pg.anova(
-    data=df_scores_,
-    dv='nh_score',
-    between=['model', 'layer'],
-    detailed=True
-)
-pair_nh = pg.pairwise_tests(
-    data=df_scores_,
-    dv='nh_score',
-    between=['model','layer'],
-    padjust='bonf'
-)
-
-print("\nStats in nh score")
-print(aov_nh)
-print(pair_nh)
-
-aov_trust = pg.anova(
-    data=df_scores_,
-    dv='trustworthiness',
-    between=['model', 'layer'],
-    detailed=True
-)
-
-pair_trust = pg.pairwise_tests(
-    data=df_scores_,
-    dv='trustworthiness',
-    between=['model','layer'],
-    padjust='bonf'
-)
-
-print("\nStats in trustworthiness")
-print(aov_trust)
-print(pair_trust)

@@ -1,286 +1,193 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Fri Feb 23 15:42:32 2024
+Created on Fri Feb 23 12:16:41 2024
 
 @author: spiros
 """
 import os
-import pickle
 import pathlib
 import numpy as np
+import pandas as pd
 import seaborn as sns
-import seaborn_image as isns
 import matplotlib.pyplot as plt
 import matplotlib.transforms as mtransforms
 
-from opt import get_data, perturb_array
-
+from opt import get_data
 from plotting_functions import my_style
-from plotting_functions import fix_names
-from plotting_functions import keep_models
-from plotting_functions import calc_eff_scores
-from plotting_functions import find_best_models
-from plotting_functions import keep_best_models_data
+from plotting_functions import get_class_names
+from plotting_functions import calculate_proj_scores
 
 
 # Set the seaborn style and color palette
-# print(sns.color_palette("pastel3").as_hex())
-sns.set_style("whitegrid")
+sns.set_style("white")
 plt.rcParams.update(my_style())
 
-palette = [
-    '#8de5a1', '#ff9f9b', '#a1c9f4',
-    '#8d8d8d'
-]
+palette = ['#8de5a1', '#ff9f9b', '#a1c9f4', '#b5b5ac']
+palette2 = ['#409140', '#e06666', '#7abacc', '#8d8d8d']
 
 dirname_figs = '../FinalFigs_manuscript'
 if not os.path.exists(f"{dirname_figs}"):
     os.mkdir(f"{dirname_figs}")
 
-# Create the figure
-fig = plt.figure(
-    num=6,
-    figsize=(8.27*0.98, 11.69*0.6),
-    layout='constrained'
-    )
-# Split the figure in top and bottom
-# Separate in three subfigures - one top, one middle, and one bottom
-subfigs = fig.subfigures(
-    nrows=2, ncols=2,
-    width_ratios=[1, 3]
-    )
-
 datatype = 'fmnist'
+dim_method = 'tsne'
+seq = False
+seq_tag = "_sequential" if seq else ""
 
-mosaic = [["A", "B"],
-          ["C", "D"],
-          ]
-
-axt = subfigs[0, 0].subplot_mosaic(
-    mosaic,
-    gridspec_kw={
-    "hspace": 0.1,
-    "wspace":0.1
-    },
-    )
-
-# label physical distance to the left and up:
-trans = mtransforms.ScaledTranslation(-20/72, 7/72, fig.dpi_scale_trans)
-axt["A"].text(0.0, 1.0, "A",
-                transform=axt["A"].transAxes + trans,
-                fontsize='large', va='bottom'
-                )
-
-
-data, labels, img_height, img_width, channels = get_data(
-    validation_split=0.1,
-    dtype=datatype,
-)
-x_train = data['train']
-y_train = labels['train']
-x = x_train[0].reshape(img_width, img_height, channels).squeeze()
-sigmas = [0.25, 0.5, 0.75, 1.0]
-
-for s, (labels, ax) in zip(sigmas, axt.items()):
-    pertrubation = np.random.normal(loc=0.0, scale=s, size=x.shape)
-    x_noise = perturb_array(x, pertrubation)
-    isns.imshow(
-        x_noise,
-        gray=True if channels == 1 else False,
-        cbar=False,
-        square=True,
-        ax=ax,
-        )
-    ax.set_title(f'σ={s}')
-    # Remove x-axis and y-axis ticks
-    ax.set_xticks([])
-    ax.set_yticks([])
-    ax.axis('off')
-    ax.grid(False)
-
-
-num_layers = 1
-data_dir = "../DATA/"
-dirname = f"{data_dir}/results_{datatype}_{num_layers}_layer/"
-
-fname_store =  pathlib.Path(f"{dirname}/output_all_final")
-with open(f'{fname_store}.pkl', 'rb') as file:
-    results = pickle.load(file)
 # Keep models to plot, i.e., dend ANN and vanilla ANN.
-models_to_keep = [
+model_to_keep = [
     'dANN-R',
     'dANN-LRF',
     'dANN-GRF',
-    #'dANN-F',
-    'vANN',
+    'vANN'
 ]
-# Find the best models for each model_type for the default case scenario.
-models_best = find_best_models(
-    keep_models(fix_names(results['testing']), models_to_keep),
-    models_to_keep,
-    metric='accuracy',
-    compare=True,
-)
 
-# Take the noise data and load the results for the best models.
-fname_store =  pathlib.Path(f"{dirname}/output_all_noise_final")
-with open(f'{fname_store}.pkl', 'rb') as file:
-    results_noise = pickle.load(file)
+data, labels, img_height, img_width, channels = get_data(0.1, datatype)
+n_data = labels['test'].shape[0] // 5
+x_test = data['test'][:n_data]
+y_test = labels['test'][:n_data]
+n_classes = len(set(y_test))
+y_test_class_names = get_class_names(datatype, y_test)
 
-df_test_u = keep_best_models_data(
-    keep_models(fix_names(results_noise['testing']), models_to_keep),
-    models_best
-)
 
-# normalize the accuracy and loss metrics.
-df_test_u["data"] = "fmnist"
-df_test_u['test_acc'] *= 100
-df_test_u = calc_eff_scores(df_test_u, form='acc')
-df_test_u = calc_eff_scores(df_test_u, form='loss')
+sigma = 0.0
+df_scores_trained_all = None
 
-mosaic = [["A", "B"],
-          ]
+reps = 10
+for nrep in range(1, reps+1):
+    df_scores_trained, embeddings_dict = calculate_proj_scores(
+        model_to_keep, "../DATA/", sigma=0.0,
+        dim_method=dim_method, datatype=datatype,
+        seq_tag=seq_tag, learn_phase="trained", rep=nrep)
+    df_scores_trained['repetition'] = nrep
 
-axt = subfigs[0, 1].subplot_mosaic(
-    mosaic,
-    gridspec_kw={
-    "hspace": 0.1,
-    "wspace":0.1
-    },
+    df_scores_trained_all = pd.concat([df_scores_trained_all, df_scores_trained])
+
+# Create the figure
+fig = plt.figure(
+    num=6,
+    figsize=(8.27*0.98, 11.69*0.7),
+    layout='constrained'
     )
 
-# label physical distance to the left and up:
-trans = mtransforms.ScaledTranslation(-20/72, 7/72, fig.dpi_scale_trans)
-axt["A"].text(0.0, 1.0, "B",
-                transform=axt["A"].transAxes + trans,
-                fontsize='large', va='bottom'
-                )
+subfigs = fig.subfigures(
+    nrows=1, ncols=2,
+    width_ratios=[3, 1]
+    )
 
-sns.lineplot(
-    data=df_test_u,
-    x="sigma",
-    y="normed_loss",
-    hue="model",
-    errorbar=("sd", 1),
-    palette=palette,
-    legend=False,
-    ax=axt["A"])
-axt["A"].set_xlabel("noise level (σ)")
-axt["A"].set_ylabel("loss eff score")
-axt["A"].grid(False)
-
-sns.lineplot(
-    data=df_test_u,
-    x="sigma",
-    y="normed_acc",
-    hue="model",
-    errorbar=("sd", 1),
-    palette=palette,
-    legend=True,
-    ax=axt["B"])
-axt["B"].legend_.set_title(None)
-axt["B"].set_xlabel("noise level (σ)")
-axt["B"].set_ylabel("accuracy eff score")
-axt["B"].grid(False)
-
-
-mosaic = [["A", ".", "B"],
-          ]
-
-axt = subfigs[1, 0].subplot_mosaic(
-    mosaic,
+# create the mosaic
+axd = subfigs[0].subplot_mosaic(
+    [["A", "B",],
+     ["C", "D",],
+     ["E", "F",],
+     ["G", "H",],],
+    sharex=True,
+    sharey=True,
     gridspec_kw={
     "hspace": 0.2,
     "wspace":0.2
     },
-    )
-# label physical distance to the left and up:
-trans = mtransforms.ScaledTranslation(-20/72, 7/72, fig.dpi_scale_trans)
-axt["A"].text(0.0, 1.0, "C",
-                transform=axt["A"].transAxes + trans,
-                fontsize='large', va='bottom'
-                )
-
-
-x1 = x_train[y_train == 0][0].reshape(img_width, img_height, channels).squeeze()
-x2 = x_train[y_train == 9][0].reshape(img_width, img_height, channels).squeeze()
-for x, (label, ax) in zip([x1, x2], axt.items()):
-    isns.imshow(
-        x,
-        gray=True if channels == 1 else False,
-        cbar=False,
-        square=True,
-        ax=ax,
-        )
-    # Remove x-axis and y-axis ticks
-    ax.set_xticks([])
-    ax.set_yticks([])
-    ax.axis('off')
-    ax.grid(False)
-
-
-num_layers = 1
-dirname = f"{data_dir}/results_{datatype}_{num_layers}_layer_sequential/"
-
-fname_store =  pathlib.Path(f"{dirname}/output_all_final")
-with open(f'{fname_store}.pkl', 'rb') as file:
-    results_seq = pickle.load(file)
-
-df_test_s = keep_best_models_data(
-    keep_models(fix_names(results_seq['testing']), models_to_keep),
-    models_best
 )
 
-df_test_s["data"] = "fmnist"
-df_test_s['test_acc'] *= 100
-df_test_s = calc_eff_scores(df_test_s, form='acc')
-df_test_s = calc_eff_scores(df_test_s, form='loss')
+# add panel labels
+mos = ["A", "B", "C", "D"]
+mos_ = ["A", "C", "E", "G"]
+axd_ = {k: v for k, v in axd.items() if k in mos_}
+for i, (label, ax) in enumerate(axd_.items()):
+    # label physical distance to the left and up:
+    trans = mtransforms.ScaledTranslation(-20/72, 7/72, fig.dpi_scale_trans)
+    ax.text(0.0, 1.0, mos[i], transform=ax.transAxes + trans,
+            fontsize='large', va='bottom')
 
 
-mosaic = [["A", "B"],
-          ]
+for i, (layer, ax) in enumerate(axd.items()):
+    k = 2 if i % 2 == 0 else 4
+    embeddings = embeddings_dict[model_to_keep[i // 2]]['trial_1'][f'layer_{k}']
+    sns.scatterplot(
+        x=embeddings[:, 0],
+        y=embeddings[:, 1],
+        s=7,
+        hue=y_test_class_names,
+        palette="tab10",
+        legend=False,
+        ax=ax)
+    ax.set_xlabel(f"{dim_method.upper()} dim 1")
+    ax.set_ylabel(f"{dim_method.upper()} dim 2")
+    ax.set_title(model_to_keep[i // 2])
 
-axt = subfigs[1, 1].subplot_mosaic(
-    mosaic,
+
+df_scores_trained = df_scores_trained_all[df_scores_trained_all['layer'] != 'output']
+df_scores_ = df_scores_trained.copy()
+df_scores_['model+layer'] = df_scores_['model'] + df_scores_['layer']
+
+# make a combined palette
+p = np.concatenate([np.array(palette).reshape(1,-1),
+                    np.array(palette2).reshape(1,-1)],
+                   axis=0)
+palette3 = list(p.T.flatten())
+
+# create the mosaic
+axd = subfigs[1].subplot_mosaic(
+    [["E"], ["F"], ["G"]],
     gridspec_kw={
-    "hspace": 0.1,
-    "wspace":0.1
+    "hspace": 0.2,
+    "wspace":0.2
     },
-    )
+)
 
-# label physical distance to the left and up:
-trans = mtransforms.ScaledTranslation(-20/72, 7/72, fig.dpi_scale_trans)
-axt["A"].text(0.0, 1.0, "D",
-                transform=axt["A"].transAxes + trans,
-                fontsize='large', va='bottom'
-                )
+# add panel labels
+mos = ["E", "F", "G"]
+for i, (label, ax) in enumerate(axd.items()):
+    # label physical distance to the left and up:
+    trans = mtransforms.ScaledTranslation(-20/72, 7/72, fig.dpi_scale_trans)
+    ax.text(0.0, 1.0, mos[i], transform=ax.transAxes + trans,
+            fontsize='large', va='bottom')
 
+panel = "E"
 sns.barplot(
-    data=df_test_s,
-    x="model",
-    y="normed_loss",
-    hue="model",
-    errorbar=("sd", 1),
-    palette=palette,
-    ax=axt["A"])
-axt["A"].set_xticks([])
-axt["A"].set_ylabel("loss eff score")
-axt["A"].set_yscale("log")
-axt["A"].grid(False)
+    data=df_scores_,
+    x=None,
+    y="silhouette",
+    hue="model+layer",
+    legend=False,
+    palette=palette3,
+    ax=axd[panel]
+)
+axd[panel].set_xticks([])
+axd[panel].set_xticklabels([])
+axd[panel].set_ylabel('Silhouette score')
+axd[panel].set_ylim([0.0, 0.35])
 
+panel = "F"
 sns.barplot(
-    data=df_test_s,
-    x="model",
-    y="normed_acc",
-    hue="model",
-    errorbar=("sd", 1),
-    palette=palette,
-    ax=axt["B"])
-axt["B"].set_xticks([])
-axt["B"].set_ylabel("accuracy eff score")
-axt["B"].grid(False)
+    data=df_scores_,
+    x=None,
+    y="nh_score",
+    hue="model+layer",
+    legend=False,
+    palette=palette3,
+    ax=axd[panel]
+)
+axd[panel].set_xticks([])
+axd[panel].set_xticklabels([])
+axd[panel].set_ylabel('NH score')
+axd[panel].set_ylim([0.6, 0.85])
 
+panel = "G"
+sns.barplot(
+    data=df_scores_,
+    x=None,
+    y="trustworthiness",
+    hue="model+layer",
+    legend=False,
+    palette=palette3,
+    ax=axd[panel]
+)
+axd[panel].set_xticks([])
+axd[panel].set_xticklabels([])
+axd[panel].set_ylabel('trustworthiness')
+axd[panel].set_ylim([0.96, 1.0])
 
 # fig final format and save
 figname = f"{dirname_figs}/figure_6"
@@ -301,20 +208,61 @@ fig.savefig(
 )
 fig.show()
 
-# Print results for Supplementary Table 2
-df_ = df_test_u.copy()
-for m in ['dANN-R', 'dANN-LRF', 'dANN-GRF', 'vANN']:
-    print(f"\n{m}")
-    for d in [0.0, 0.25, 0.5, 0.75, 1.0]:
-        df__ = df_[(df_['model'] == m) & (df_['sigma'] == d)].copy()
-        print(np.round(np.mean(df__['test_loss']), 4))
-        print(np.round(np.std(df__['test_loss']), 4))
 
 
-# Print results for Table 2
-df_ = df_test_s.copy()
-for m in ['dANN-R', 'dANN-LRF', 'dANN-GRF', 'vANN']:
-    print(f"\n{m}")
-    for d in [0.0]:
-        print(np.round(np.mean(df_[df_['model'] == m]['test_acc']), 3))
-        print(np.round(np.std(df_[df_['model'] == m]['test_acc']), 4))
+
+# Statistical analysis
+import pingouin as pg
+
+aov_sil = pg.anova(
+    data=df_scores_,
+    dv='silhouette',
+    between=['model', 'layer'],
+    detailed=True
+)
+
+pair_sil = pg.pairwise_tests(
+    data=df_scores_,
+    dv='silhouette',
+    between=['model','layer'],
+    padjust='bonf'
+)
+
+print("\nStats in Silhouette")
+print(aov_sil)
+print(pair_sil)
+
+aov_nh = pg.anova(
+    data=df_scores_,
+    dv='nh_score',
+    between=['model', 'layer'],
+    detailed=True
+)
+pair_nh = pg.pairwise_tests(
+    data=df_scores_,
+    dv='nh_score',
+    between=['model','layer'],
+    padjust='bonf'
+)
+
+print("\nStats in nh score")
+print(aov_nh)
+print(pair_nh)
+
+aov_trust = pg.anova(
+    data=df_scores_,
+    dv='trustworthiness',
+    between=['model', 'layer'],
+    detailed=True
+)
+
+pair_trust = pg.pairwise_tests(
+    data=df_scores_,
+    dv='trustworthiness',
+    between=['model','layer'],
+    padjust='bonf'
+)
+
+print("\nStats in trustworthiness")
+print(aov_trust)
+print(pair_trust)

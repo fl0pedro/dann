@@ -66,7 +66,7 @@ models_to_keep = [
     'dANN-R',
     'dANN-LRF',
     'dANN-GRF',
-    'dANN-F',
+    'pdANN',
     'vANN',
 ]
 for key in DATA.keys():
@@ -107,4 +107,3 @@ fig.savefig(
     dpi=600
 )
 fig.show()
-

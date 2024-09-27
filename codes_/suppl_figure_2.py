@@ -8,6 +8,7 @@ Created on Tue Feb 27 11:28:13 2024
 import os
 import pickle
 import pathlib
+import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib.transforms as mtransforms
@@ -49,7 +50,7 @@ models_to_keep = [
     'dANN-R',
     'dANN-LRF',
     'dANN-GRF',
-    'dANN-F',
+    'pdANN',
     'vANN',
 ]
 
@@ -59,7 +60,12 @@ df_all_['train_acc'] *= 100
 df_all_['val_acc'] *= 100
 df_test_['test_acc'] *= 100
 
-df_all_ = df_all_[(df_all_['num_soma'] >= 32) & (df_all_['num_dends'] >= 1)]
+df_all_1 = df_all_[(df_all_['num_soma'] == 512) & (df_all_['num_dends'] == 64)]
+df_all_2 = df_all_[(df_all_['num_soma'] == 32) & (df_all_['num_dends'] == 32)]
+df_all_3 = df_all_[(df_all_['num_soma'] == 128) & (df_all_['num_dends'] == 32)]
+
+df_all_new = pd.concat([df_all_1, df_all_2, df_all_3], ignore_index=True)
+
 y_ax = [
     "train_acc",
     "val_acc",
@@ -99,21 +105,21 @@ for label, ax in axd.items():
         va='bottom'
     )
 
-for i, (model, (label, ax)) in enumerate(zip(models_to_keep, axd.items())):
+for i, (label, ax) in enumerate(axd.items()):
     sns.lineplot(
-        data=df_all_,
+        data=df_all_new,
         x='epoch',
         y=y_ax[i],
         hue='model',
-        style=df_all_[['num_soma', 'num_dends']].apply(tuple, axis=1),
+        style=df_all_new[['num_soma', 'num_dends']].apply(tuple, axis=1),
         palette=palette,
-        legend=False, # if i != 0 else True,
+        legend=False if i != 0 else True,
         ax=ax)
 
     ax.set_ylabel(y_label[i])
 
 # fig final format and save
-figname = f"{dirname_figs}/supplementary_figure_2.py"
+figname = f"{dirname_figs}/supplementary_figure_2"
 fig.savefig(
     pathlib.Path(pathlib.Path(f"{figname}.pdf")),
     bbox_inches='tight',

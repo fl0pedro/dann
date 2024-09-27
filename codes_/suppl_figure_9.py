@@ -53,8 +53,13 @@ axd = fig.subplot_mosaic(
 for label, ax in axd.items():
     # label physical distance to the left and up:
     trans = mtransforms.ScaledTranslation(-20/72, 7/72, fig.dpi_scale_trans)
-    ax.text(0.0, 1.0, label, transform=ax.transAxes + trans,
-            fontsize='large', va='bottom')
+    ax.text(
+        0.0, 1.0,
+        label,
+        transform=ax.transAxes + trans,
+        fontsize='large',
+        va='bottom'
+    )
 
 # load best models
 fname_models = f"{data_dir}/all_datasets_best_models_final.pkl"
@@ -62,18 +67,17 @@ DATA = pd.read_pickle(open(fname_models, 'rb'))
 
 models_to_keep = [
     'dANN-R',
-    'vANN-R',
+    'sANN',
     'dANN-LRF',
-    'vANN-LRF',
+    'sANN-LRF',
     'dANN-GRF',
-    'vANN-GRF',
-    'dANN-F',
-    'vANN',
+    'sANN-GRF',
+    'pdANN',
+    'psANN',
 ]
 
 for key in DATA.keys():
     DATA[key] = keep_models(DATA[key], models_to_keep)
-
 
 df_test_subtract = pd.DataFrame()
 df_test = DATA["compare_acc"]
@@ -92,7 +96,6 @@ for data in df_test["data"].unique():
         df_test_subtract = pd.concat([df_test_subtract, df_test_subtract_])
 
 df_test_subtract = df_test_subtract.reset_index()
-
 
 panel = "A"
 sns.barplot(
@@ -153,12 +156,13 @@ models_to_keep = [
     'dANN-R',
     'dANN-LRF',
     'dANN-GRF',
-    'dANN-F',
-    'vANN-R',
-    'vANN-LRF',
-    'vANN-GRF',
-    'vANN',
+    'pdANN',
+    'sANN',
+    'sANN-LRF',
+    'sANN-GRF',
+    'psANN',
 ]
+
 
 # normalized accuracy
 df_test_subtract = pd.DataFrame()
@@ -230,7 +234,7 @@ axd[panel].set_title("best models")
 
 
 # fig final format and save
-figname = f"{dirname_figs}/supplementary_figure_9"
+figname = f"{dirname_figs}/supplementray_figure_9"
 fig.savefig(
     pathlib.Path(f"{figname}.pdf"),
     bbox_inches='tight',

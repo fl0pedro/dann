@@ -53,7 +53,7 @@ models_to_keep = [
     'dANN-R',
     'dANN-LRF',
     'dANN-GRF',
-    'dANN-F',
+    'pdANN',
     'vANN',
 ]
 
@@ -83,8 +83,13 @@ axd = fig.subplot_mosaic(
 for label, ax in axd.items():
     # label physical distance to the left and up:
     trans = mtransforms.ScaledTranslation(-20/72, 7/72, fig.dpi_scale_trans)
-    ax.text(0.0, 1.0, label, transform=ax.transAxes + trans,
-            fontsize='large', va='bottom')
+    ax.text(
+        0.0, 1.0,
+        label,
+        transform=ax.transAxes + trans,
+        fontsize='large',
+        va='bottom'
+    )
 
 # calculate the stats of
 eval_metrics = calculate_best_model(df_test_[df_test_['model'] == 'vANN'])

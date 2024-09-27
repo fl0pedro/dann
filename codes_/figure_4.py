@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Tue Feb 20 11:25:37 2024
+Created on Mon Jul  8 08:45:22 2024
 
 @author: spiros
 """
@@ -9,20 +9,17 @@ Created on Tue Feb 20 11:25:37 2024
 import os
 import pickle
 import pathlib
+import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib.transforms as mtransforms
 
-from scipy.stats import skew, kurtosis
-from plotting_functions import my_style, draw_text_metrics, short_to_long_names
-
+from plotting_functions import fix_names, keep_models
+from plotting_functions import my_style, calculate_best_model
 
 # Set the seaborn style and color palette
 sns.set_style("white")
 plt.rcParams.update(my_style())
-
-palette = ['#8de5a1', '#ff9f9b', '#a1c9f4', '#b5b5ac']
-palette2 = ['#409140', '#e06666', '#7abacc', '#8d8d8d']
 
 datatype = 'fmnist'
 dirname_figs = '../FinalFigs_manuscript'
@@ -38,239 +35,241 @@ dirname = f"{data_dir}/results_{datatype}_{num_layers}_layer{seq_tag}/"
 # Create the figure
 fig = plt.figure(
     num=4,
-    figsize=(8.27*0.98, 11.69*0.8),
-    layout='tight'
-)
-
-# Split the figure in top and bottom
-# Separate in three subfigures - one top, one middle, and one bottom
-subfigs = fig.subfigures(
-    nrows=3, ncols=1,
-    height_ratios=[2, .8, .8],
+    figsize=(8.27*0.98, 11.69*0.9),
+    layout='constrained'
     )
 
-# Create the top left subfigure
+# Create layout
 mosaic = [
-    ["A", "B", "C", "D"],
-    ["E", "F", "G", "H"],
-    ["I", "J", "K", "L"]
+    ["A", "B"],
+    ["C", "D"],
+    ["E", "F"]
 ]
 
-axt = subfigs[0].subplot_mosaic(
+axd = fig.subplot_mosaic(
     mosaic,
-    sharey=True,
-    sharex=True,
-    gridspec_kw={
-        "hspace": 0.5,
-    },
+    sharex=True
 )
 
-# label physical distance to the left and up:
-trans = mtransforms.ScaledTranslation(
-    -20/72, 7/72,
-    fig.dpi_scale_trans
-)
-
-axt["A"].text(
-    0.0, 1.0, "A",
-    transform=axt["A"].transAxes + trans,
-    fontsize='large',
-    va='bottom'
-)
-
-# load weights of best models
-fname_weights = f"{data_dir}/weights_best_models{seq_tag}.pkl"
-with open(fname_weights, 'rb') as file:
-    weights_loaded = pickle.load(file)
-
-w_dend_all = weights_loaded['dendrites']
-w_soma_all = weights_loaded['soma']
-w_out_all = weights_loaded['output']
-
-# Keep specific models
-model_names = ['dANN-R', 'dANN-LRF', 'dANN-GRF', 'vANN']
-models = short_to_long_names(model_names)
-
-# Plot the results
-xloc, yloc = 0.97, 0.97
-for i, (model_type, (label, ax)) in enumerate(zip(models, list(axt.items())[:4])):
-    sns.histplot(
-        w_dend_all[f'{model_type}'].flatten(),
-        bins=20,
-        kde=True,
-        stat='probability',
-        ax=ax,
-        color=palette[i],
+for label, ax in axd.items():
+    # label physical distance to the left and up:
+    trans = mtransforms.ScaledTranslation(
+        -20/72, 7/72,
+        fig.dpi_scale_trans
     )
-    ax.set_title(f"{model_names[i]}")
-    ax.set_ylabel('probability')
-    ax.set_xticks([])
-    ax.set_xticklabels([])
-    w_ = w_dend_all[f'{model_type}'].flatten()
-    k = kurtosis(w_)
-    s = skew(w_)
-    r = max(w_) - min(w_)
-    draw_text_metrics(ax, xloc, yloc, k, 'Kurtosis')
-    draw_text_metrics(ax, xloc, yloc-0.2, s, 'Skewness')
-    draw_text_metrics(ax, xloc, yloc-0.4, r, 'Range')
-
-
-# Plot the results
-for i, (model_type, (label, ax)) in enumerate(zip(models, list(axt.items())[4:8])):
-    sns.histplot(
-        w_soma_all[f'{model_type}'].flatten(),
-        bins=20,
-        kde=True,
-        stat='probability',
-        ax=ax,
-        color=palette2[i],
+    ax.text(
+        0.0, 1.0,
+        label,
+        transform=ax.transAxes + trans,
+        fontsize='large',
+        va='bottom'
     )
-    ax.set_xlabel('weights')
-    ax.set_ylabel('probability')
-    ax.set_xticks([-2.5, 0.0, 2.5])
-    ax.set_xticklabels([-2.5, 0.0, 2.5])
-    w_ = w_soma_all[f'{model_type}'].flatten()
-    k = kurtosis(w_)
-    s = skew(w_)
-    r = max(w_) - min(w_)
-    draw_text_metrics(ax, xloc, yloc, k, 'Kurtosis')
-    draw_text_metrics(ax, xloc, yloc-0.2, s, 'Skewness')
-    draw_text_metrics(ax, xloc, yloc-0.4, r, 'Range')
 
-# Plot the results
-for i, (model_type, (label, ax)) in enumerate(zip(models, list(axt.items())[8:])):
-    sns.histplot(
-        w_out_all[f'{model_type}'].flatten(),
-        bins=20,
-        kde=True,
-        stat='probability',
-        ax=ax,
-        color=palette2[i],
-    )
-    ax.set_xlabel('weights')
-    ax.set_ylabel('probability')
-    ax.set_xticks([-2.5, 0.0, 2.5])
-    ax.set_xticklabels([-2.5, 0.0, 2.5])
-    w_ = w_out_all[f'{model_type}'].flatten()
-    k = kurtosis(w_)
-    s = skew(w_)
-    r = max(w_) - min(w_)
-    draw_text_metrics(ax, xloc, yloc, k, 'Kurtosis')
-    draw_text_metrics(ax, xloc, yloc-0.2, s, 'Skewness')
-    draw_text_metrics(ax, xloc, yloc-0.4, r, 'Range')
 
-# middle left subfigure
-# load entropies of best models
-fname_entropies = f"{data_dir}/entropies_best_models{seq_tag}.pkl"
-with open(fname_entropies, 'rb') as file:
-    entropies_loaded = pickle.load(file)
+# Load data (deserialize)
+fname_store =  pathlib.Path(f"{dirname}/output_all_final")
+with open(f'{fname_store}.pkl', 'rb') as file:
+    results = pickle.load(file)
+df_all = fix_names(results['training'])
+df_test = fix_names(results['testing'])
 
-h_dend_all = entropies_loaded['dendrites']
-h_soma_all = entropies_loaded['soma']
+# Keep models to plot, i.e., vanilla ANNs.
+palette = [
+    '#8de5a1', '#495054'
+]
 
-mosaic = [["A", "B", "C", "D"]]
-axm = subfigs[1].subplot_mosaic(
-    mosaic, sharey=True, sharex=True,
-    gridspec_kw={
-        "hspace": 0.5,
-    },
+model_to_keep = [
+    'dANN-R',
+    'vANN-R',
+]
+
+df_all_ = keep_models(df_all, model_to_keep)
+df_test_ = keep_models(df_test, model_to_keep)
+df_all_['train_acc'] *= 100
+df_all_['val_acc'] *= 100
+df_test_['test_acc'] *= 100
+
+# calculate the stats of
+eval_metrics = calculate_best_model(df_test_[df_test_['model'] == 'vANN-R'])
+
+# Panel A
+panel = "A"
+sns.lineplot(
+    data=df_test_,
+    x="trainable_params", y="test_loss",
+    hue="model", style="model",
+    markers=True, dashes=False,
+    ax=axd[panel], palette=palette,
 )
-trans = mtransforms.ScaledTranslation(
-    -20/72, 7/72,
-    fig.dpi_scale_trans
+axd[panel].axhline(
+    np.min(eval_metrics, axis=0)[0],
+    linestyle="--", c="k",
+    linewidth=1.5,
 )
-
-axm["A"].text(
-    0.0, 1.0, "B",
-    transform=axm["A"].transAxes + trans,
-    fontsize='large',
-    va='bottom'
+axd[panel].axvline(
+    eval_metrics[np.argmin(eval_metrics[:, 0])][-1],
+    linestyle="--", c="k",
+    linewidth=1.5,
 )
+axd[panel].set_ylabel("test loss")
+axd[panel].set_xlabel("trainable params")
+axd[panel].set_xscale("log")
 
-for i, (model_type, (label, ax)) in enumerate(zip(models, axm.items())):
-    sns.histplot(
-        h_dend_all[f'{model_type}'],
-        bins=20,
-        kde=True,
-        stat='probability',
-        ax=ax,
-        color=palette[i],
-        label='dendritic',
-        kde_kws=dict(bw_adjust=3),
-    )
-    sns.histplot(
-        h_soma_all[f'{model_type}'],
-        bins=20,
-        kde=True,
-        stat='probability',
-        ax=ax,
-        color=palette2[i],
-        label='somatic',
-        alpha=0.4,
-        line_kws={'alpha': 0.6},
-        kde_kws=dict(bw_adjust=3),
-    )
-    ax.set_xlabel('entropy (bits)')
-    ax.set_ylabel('probability')
-    ax.set_xticks([0, 1, 2, 3])
-    ax.set_xticklabels([0, 1, 2, 3])
-    ax.legend() if i == 3 else None
-
-# Make selectivity histograms - bottom left subfigure
-fname_selectivity = f"{data_dir}/selectivity_best_models{seq_tag}.pkl"
-with open(fname_selectivity, 'rb') as file:
-    slectivity_loaded = pickle.load(file)
-
-s_dend_all = slectivity_loaded['dendrites']
-s_soma_all = slectivity_loaded['soma']
-
-mosaic = [["A", "B", "C", "D"]]
-axb = subfigs[2].subplot_mosaic(
-    mosaic,
-    sharey=True,
-    sharex=True,
-    gridspec_kw={
-        "hspace": 0.5,
-    },
+# Panel B
+panel = "B"
+sns.lineplot(
+    data=df_test_,
+    x="trainable_params", y="test_acc",
+    hue="model", style="model",
+    markers=True, dashes=False,
+    legend=False,
+    ax=axd[panel], palette=palette,
 )
-
-trans = mtransforms.ScaledTranslation(
-    -20/72, 7/72,
-    fig.dpi_scale_trans
+axd[panel].axhline(
+    np.max(eval_metrics, axis=0)[1],
+    linestyle="--", c="k",
+    linewidth=1.5,
 )
-
-axb["A"].text(
-    0.0, 1.0, "C",
-    transform=axb["A"].transAxes + trans,
-    fontsize='large',
-    va='bottom'
+axd[panel].axvline(
+    eval_metrics[np.argmax(eval_metrics[:, 1])][-1],
+    linestyle="--", c="k",
+    linewidth=1.5,
 )
+axd[panel].set_ylabel("test accuracy (%)")
+axd[panel].set_xlabel("trainable params")
+axd[panel].set_xscale("log")
 
-n_classes = 10 if datatype != "emnist" else 47
-for i, (model_type, (label, ax)) in enumerate(zip(models, axb.items())):
-    sns.histplot(
-        [x for x in s_dend_all[f'{model_type}'] if x > 0],
-        bins=n_classes,
-        kde=False,
-        stat='probability',
-        color=palette[i],
-        label='dendritic',
-        ax=ax,
-    )
-    sns.histplot(
-        [x for x in s_soma_all[f'{model_type}'] if x > 0],
-        bins=n_classes,
-        kde=False,
-        stat='probability',
-        color=palette2[i],
-        label='somatic',
-        ax=ax,
-    )
-    ax.set_xlabel('classes')
-    ax.set_ylabel('probability')
-    xticks = [1, 5, 10] if datatype != 'emnist' else [1, 23, 47]
-    ax.set_xticks(xticks)
-    ax.set_xticklabels(xticks)
+# Keep models to plot, i.e., vanilla ANNs.
+palette = [
+    '#ff9f9b', '#495054'
+]
+
+model_to_keep = [
+    'dANN-LRF',
+    'vANN-LRF',
+]
+
+df_all_ = keep_models(df_all, model_to_keep)
+df_test_ = keep_models(df_test, model_to_keep)
+df_all_['train_acc'] *= 100
+df_all_['val_acc'] *= 100
+df_test_['test_acc'] *= 100
+
+# calculate the stats of
+eval_metrics = calculate_best_model(df_test_[df_test_['model'] == 'vANN-LRF'])
+
+# Panel C
+panel = "C"
+sns.lineplot(
+    data=df_test_,
+    x="trainable_params", y="test_loss",
+    hue="model", style="model",
+    markers=True, dashes=False,
+    ax=axd[panel], palette=palette,
+)
+axd[panel].axhline(
+    np.min(eval_metrics, axis=0)[0],
+    linestyle="--", c="k",
+    linewidth=1.5,
+)
+axd[panel].axvline(
+    eval_metrics[np.argmin(eval_metrics[:, 0])][-1],
+    linestyle="--", c="k",
+    linewidth=1.5,
+)
+axd[panel].set_ylabel("test loss")
+axd[panel].set_xlabel("trainable params")
+axd[panel].set_xscale("log")
+
+# Panel D
+panel = "D"
+sns.lineplot(
+    data=df_test_,
+    x="trainable_params", y="test_acc",
+    hue="model", style="model",
+    markers=True, dashes=False,
+    legend=False,
+    ax=axd[panel], palette=palette,
+)
+axd[panel].axhline(
+    np.max(eval_metrics, axis=0)[1],
+    linestyle="--", c="k",
+    linewidth=1.5,
+)
+axd[panel].axvline(
+    eval_metrics[np.argmax(eval_metrics[:, 1])][-1],
+    linestyle="--", c="k",
+    linewidth=1.5,
+)
+axd[panel].set_ylabel("test accuracy (%)")
+axd[panel].set_xlabel("trainable params")
+axd[panel].set_xscale("log")
+
+# Keep models to plot, i.e., vanilla ANNs.
+palette = [
+    '#a1c9f4', '#495054'
+]
+
+model_to_keep = [
+    'dANN-GRF',
+    'vANN-GRF',
+]
+
+df_all_ = keep_models(df_all, model_to_keep)
+df_test_ = keep_models(df_test, model_to_keep)
+df_all_['train_acc'] *= 100
+df_all_['val_acc'] *= 100
+df_test_['test_acc'] *= 100
+
+# calculate the stats of
+eval_metrics = calculate_best_model(df_test_[df_test_['model'] == 'vANN-GRF'])
+
+# Panel E
+panel = "E"
+sns.lineplot(
+    data=df_test_,
+    x="trainable_params", y="test_loss",
+    hue="model", style="model",
+    markers=True, dashes=False,
+    ax=axd[panel], palette=palette,
+)
+axd[panel].axhline(
+    np.min(eval_metrics, axis=0)[0],
+    linestyle="--", c="k",
+    linewidth=1.5,
+)
+axd[panel].axvline(
+    eval_metrics[np.argmin(eval_metrics[:, 0])][-1],
+    linestyle="--", c="k",
+    linewidth=1.5,
+)
+axd[panel].set_ylabel("test loss")
+axd[panel].set_xlabel("trainable params")
+axd[panel].set_xscale("log")
+
+# Panel F
+panel = "F"
+sns.lineplot(
+    data=df_test_,
+    x="trainable_params", y="test_acc",
+    hue="model", style="model",
+    markers=True, dashes=False,
+    legend=False,
+    ax=axd[panel], palette=palette,
+)
+axd[panel].axhline(
+    np.max(eval_metrics, axis=0)[1],
+    linestyle="--", c="k",
+    linewidth=1.5,
+)
+axd[panel].axvline(
+    eval_metrics[np.argmax(eval_metrics[:, 1])][-1],
+    linestyle="--", c="k",
+    linewidth=1.5,
+)
+axd[panel].set_ylabel("test accuracy (%)")
+axd[panel].set_xlabel("trainable params")
+axd[panel].set_xscale("log")
 
 # fig final format and save
 figname = f"{dirname_figs}/figure_4"

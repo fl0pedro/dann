@@ -51,8 +51,13 @@ axd = fig.subplot_mosaic(
 for label, ax in axd.items():
     # label physical distance to the left and up:
     trans = mtransforms.ScaledTranslation(-20/72, 7/72, fig.dpi_scale_trans)
-    ax.text(0.0, 1.0, label, transform=ax.transAxes + trans,
-            fontsize='large', va='bottom')
+    ax.text(
+        0.0, 1.0,
+        label,
+        transform=ax.transAxes + trans,
+        fontsize='large',
+        va='bottom'
+    )
 
 # Load data (deserialize)
 fname_store =  pathlib.Path(f"{dirname}/output_all_dropout_final")
@@ -64,7 +69,10 @@ df_test = fix_names(results['testing'])
 # Keep models to plot, i.e., vanilla ANNs.
 palette = [
     '#8de5a1',
-    '#626262', '#464646', '#383838', '#8d8d8d'
+    '#626262',
+    '#464646',
+    '#383838',
+    '#8d8d8d'
 ]
 
 

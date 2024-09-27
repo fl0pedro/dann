@@ -42,8 +42,8 @@ for datatype in datatypes:
 
     # Keep models to plot, i.e., dend ANN and vanilla ANN.
     model_to_keep = [
-        'dANN-R', 'dANN-LRF', 'dANN-GRF', 'dANN-F',
-        'sANN', 'sANN-LRF', 'sANN-GRF','sANN-F',
+        'dANN-R', 'dANN-LRF', 'dANN-GRF', 'pdANN',
+        'sANN', 'sANN-LRF', 'sANN-GRF','psANN',
         'vANN-R', 'vANN-LRF', 'vANN-GRF',
         'vANN',
     ]
@@ -89,8 +89,8 @@ for datatype in datatypes:
 
     # Keep models to plot, i.e., dend ANN and vanilla ANN.
     model_to_keep = [
-        'dANN-R', 'dANN-LRF', 'dANN-GRF', 'dANN-F',
-        'sANN', 'sANN-LRF', 'sANN-GRF','sANN-F',
+        'dANN-R', 'dANN-LRF', 'dANN-GRF', 'pdANN',
+        'sANN', 'sANN-LRF', 'sANN-GRF','psANN',
         'vANN-R', 'vANN-LRF', 'vANN-GRF',
         'vANN',
     ]

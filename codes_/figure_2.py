@@ -122,7 +122,7 @@ models_to_keep = [
     'dANN-R',
     'dANN-LRF',
     'dANN-GRF',
-    'dANN-F',
+    'pdANN',
     'vANN',
 ]
 df_all_ = keep_models(df_all, models_to_keep)
