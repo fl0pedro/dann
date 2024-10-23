@@ -29,6 +29,7 @@ seq_flag = False if int(sys.argv[2]) == 0 else True
 noise = True
 early_stop = False if int(sys.argv[3]) == 0 else True
 trial = int(sys.argv[4])
+keras.utils.set_random_seed(trial)
 
 rfs_type = 'somatic'
 model_type = int(sys.argv[5])
