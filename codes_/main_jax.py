@@ -134,6 +134,7 @@ Masks = make_masks(
     rfs=rfs,
     rfs_type=rfs_type,
     rfs_mode='random',
+    seed=trial,
 )
 
 # Get the model
@@ -244,9 +245,8 @@ if save:
     # Save the model
     postfix = f"sigma_{sigma}_trial_{trial}_dends_{num_dends}_soma_{num_soma}"
     # Save the untrained and trained model
-    # <TODO>: change .h5 to .keras
     # model_untrained.save(pathlib.Path(f"{outdir_name}/untrained_model_{postfix}.h5"))
-    model.save(pathlib.Path(f"{outdir_name}/model_{postfix}.h5"))
+    model.save(pathlib.Path(f"{outdir_name}/model_{postfix}.keras"))
 
     # Save the results
     fname_res = pathlib.Path(f"{outdir_name}/results_{postfix}.pkl")

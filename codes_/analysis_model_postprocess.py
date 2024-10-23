@@ -69,7 +69,7 @@ for model_type in models:
                     print(f"\ndir: {dirname}")
                     subdir = f"{model_type}"
                     postfix = f"sigma_{sigma}_trial_{t}_dends_{num_dends}_soma_{num_soma}"
-                    fname_model = Path(f"{dirname}/{subdir}/model_{postfix}.h5")
+                    fname_model = Path(f"{dirname}/{subdir}/model_{postfix}.keras")
                     fname_data = Path(f"{dirname}/{subdir}/results_{postfix}.pkl")
 
                     if not os.path.exists(fname_data):

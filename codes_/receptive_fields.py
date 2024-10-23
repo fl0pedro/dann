@@ -37,7 +37,7 @@ def nb_vals(matrix, indices, size=1, opt=None):
     return nb_indices
 
 
-def random_connectivity(inputs, outputs, opt='random', conns=None, seed=0):
+def random_connectivity(inputs, outputs, opt='random', conns=None, seed=None):
     """
     Connectivity matrix between two layers.
 
@@ -52,7 +52,7 @@ def random_connectivity(inputs, outputs, opt='random', conns=None, seed=0):
     conns : int, optional
         Explicit set of number of connections. The default is None.
     seed : int, optional
-        The random seed. The default is 0.
+        A seed to initialize the BitGenerator. The default is None.
 
     Raises
     ------
@@ -65,10 +65,12 @@ def random_connectivity(inputs, outputs, opt='random', conns=None, seed=0):
         The connectivity matrix.
 
     """
+    # set the random Generator
+    rng = np.random.default_rng(seed)
+
     mask = np.zeros(shape=(inputs, outputs))
-    np.random.seed(seed)
     if opt == 'one_to_one':
-        idxs = np.random.randint(
+        idxs = rng.integer(
             low=0,
             high=mask.shape[0],
             size=mask.shape[1]
@@ -83,7 +85,7 @@ def random_connectivity(inputs, outputs, opt='random', conns=None, seed=0):
         elif conns > mask.size:
             raise ValueError('Specify `conns` as positive integer lower '
                              'than `inputs*outputs`')
-        indices = np.random.choice(inputs*outputs, conns, replace=False)
+        indices = rng.choice(inputs*outputs, conns, replace=False)
         mask.flat[indices] = 1
 
     elif opt == 'constant':
@@ -93,7 +95,7 @@ def random_connectivity(inputs, outputs, opt='random', conns=None, seed=0):
         if conns > mask.shape[0]:
             raise ValueError('`conns` cannot be more than input nodes.')
         for i in range(mask.shape[1]):
-            idx = np.random.choice(mask.shape[0], conns, replace=False)
+            idx = rng.choice(mask.shape[0], conns, replace=False)
             mask[idx, i] = 1
     else:
         raise ValueError('Not a valid option. `opt` should take the values'
@@ -102,7 +104,7 @@ def random_connectivity(inputs, outputs, opt='random', conns=None, seed=0):
     return mask.astype('int')
 
 
-def choose_centers(possible_values, nodes):
+def choose_centers(possible_values, nodes, seed):
     """
     Choose coordinates in the image.
 
@@ -112,6 +114,8 @@ def choose_centers(possible_values, nodes):
         List of possible pixels to allocate.
     nodes : int
         The number of nodes to allocate centers to.
+    seed : int, optional
+        A seed to initialize the BitGenerator. The default is None.
 
     Returns
     -------
@@ -119,10 +123,13 @@ def choose_centers(possible_values, nodes):
         The center of each node in `nodes`.
 
     """
-    return np.random.choice(possible_values, nodes)
+    # set the random Generator
+    rng = np.random.default_rng(seed)
+
+    return rng.choice(possible_values, nodes)
 
 
-def allocate_synapses(nb, matrix, num_of_synapses, num_channels=1):
+def allocate_synapses(nb, matrix, num_of_synapses, num_channels=1, seed=None):
     """
     The allocation of synapses on dendrites.
 
@@ -136,6 +143,8 @@ def allocate_synapses(nb, matrix, num_of_synapses, num_channels=1):
         The number of inputs per dendrite.
     num_channels : int, optional
         The number of channels of input images. The default is 1.
+    seed : int, optional
+        A seed to initialize the BitGenerator. The default is None.
 
     Raises
     ------
@@ -148,6 +157,9 @@ def allocate_synapses(nb, matrix, num_of_synapses, num_channels=1):
         The connectivity of one dendrite (each receptive field).
 
     """
+    # set the random Generator
+    rng = np.random.default_rng(seed)
+
     # Allocate inputs to synapses
     M, N = matrix.shape
     mask = np.zeros((M, N))
@@ -175,7 +187,7 @@ def allocate_synapses(nb, matrix, num_of_synapses, num_channels=1):
                 break
 
         added = extra_syns[
-            np.random.choice(
+            rng.choice(
                 extra_syns.shape[0],
                 diff,
                 replace=False
@@ -184,7 +196,7 @@ def allocate_synapses(nb, matrix, num_of_synapses, num_channels=1):
         syn_indices_ = np.concatenate((syn_indices, added))
     elif len(syn_indices) > num_of_synapses:
         # Subsample at random
-        idx = np.random.choice(
+        idx = rng.choice(
             syn_indices.shape[0],
             num_of_synapses,
             replace=False
@@ -206,8 +218,11 @@ def allocate_synapses(nb, matrix, num_of_synapses, num_channels=1):
     return mask.reshape(M*N*num_channels)
 
 
-def make_mask_matrix(centers_ids, matrix, dendrites, somata,
-                     num_of_synapses, num_channels=1, rfs_type='somatic'):
+def make_mask_matrix(
+    centers_ids, matrix, dendrites, somata,
+    num_of_synapses, num_channels=1,
+    rfs_type='somatic', seed=None
+    ):
     """
     Create the maks.
 
@@ -249,10 +264,13 @@ def make_mask_matrix(centers_ids, matrix, dendrites, somata,
             # if dendrites of one soma are less than the size of the neighborhood
             # pick random centers within the neighborhood
             if dendrites < len(nb_indices):
-                nb_indices = nb_indices[np.random.choice(
-                    range(len(nb_indices)),
-                    dendrites, replace=False
-                )]
+                nb_indices = nb_indices[
+                    rng.choice(
+                        range(len(nb_indices)),
+                        dendrites,
+                        replace=False
+                    )
+                ]
             # if dendrites of one soma are more than the size of the neighborhood
             # choose random centers of an extended neighborhood
             # (+2 pixel from center)
@@ -274,7 +292,7 @@ def make_mask_matrix(centers_ids, matrix, dendrites, somata,
                         break
 
                 added = extra_centers[
-                    np.random.choice(
+                    rng.choice(
                         extra_centers.shape[0],
                         diff,
                         replace=False
@@ -288,7 +306,8 @@ def make_mask_matrix(centers_ids, matrix, dendrites, somata,
                     nb,
                     matrix,
                     num_of_synapses,
-                    num_channels=num_channels
+                    num_channels=num_channels,
+                    seed=seed
                 )
                 counter += 1
 
@@ -307,9 +326,11 @@ def make_mask_matrix(centers_ids, matrix, dendrites, somata,
     return mask_final
 
 
-def receptive_fields(matrix, somata, dendrites, num_of_synapses,
-                     opt='random', rfs_type="somatic", step=None, prob=None,
-                     num_channels=1, size_rfs=None, centers_ids=None, seed=1):
+def receptive_fields(
+    matrix, somata, dendrites, num_of_synapses,
+    opt='random', rfs_type="somatic", step=None, prob=None,
+    num_channels=1, size_rfs=None, centers_ids=None, seed=None
+    ):
     """
     Construct Receptive Fields like connectivity.
 
@@ -334,6 +355,12 @@ def receptive_fields(matrix, somata, dendrites, num_of_synapses,
         DESCRIPTION. The default is None.
     num_channels : TYPE, optional
         DESCRIPTION. The default is 1.
+    size_rfs : int, optional
+        DESCRIPTION. The default is None.
+    centers_ids : list, optional
+        DESCRIPTION. The default is None.
+    seed : int, optional
+        A seed to initialize the BitGenerator. The default is None.
 
     Raises
     ------
@@ -358,8 +385,8 @@ def receptive_fields(matrix, somata, dendrites, num_of_synapses,
     if not centers_ids:
         if opt == 'random':
             # Random allocation
-            centers_w = choose_centers(range(M), nodes)
-            centers_h = choose_centers(range(N), nodes)
+            centers_w = choose_centers(range(M), nodes, seed)
+            centers_h = choose_centers(range(N), nodes, seed)
             centers_ids = [(x, y) for x, y in zip(centers_w, centers_h)]
         elif opt == 'random_limited':
             if size_rfs is None:
@@ -367,13 +394,13 @@ def receptive_fields(matrix, somata, dendrites, num_of_synapses,
                                  'and should be a positive integer. '
                                  'Found `None`')
             # Random allocation -- limited sampling
-            rnd_pixels = np.random.randint(
+            rnd_pixels = rng.integer(
                 low=0,
                 high=matrix.shape[0],
                 size=size_rfs
             )
-            centers_w = choose_centers(rnd_pixels, nodes)
-            centers_h = choose_centers(rnd_pixels, nodes)
+            centers_w = choose_centers(rnd_pixels, nodes, seed)
+            centers_h = choose_centers(rnd_pixels, nodes, seed)
             centers_ids = [(x, y) for x, y in zip(centers_w, centers_h)]
 
         elif opt == 'semirandom':
@@ -383,7 +410,7 @@ def receptive_fields(matrix, somata, dendrites, num_of_synapses,
                                  'Found `None`')
             centers_ids1 = None
             centers_ids2 = None
-            p = np.random.rand(nodes)
+            p = rng.random(nodes)
             somata1 = sum(p > prob)  # outside of attention site
             somata2 = sum(p < prob)  # inside attention site
 
@@ -393,17 +420,19 @@ def receptive_fields(matrix, somata, dendrites, num_of_synapses,
             # Random allocation outside of the middle of the image
             centers_w = choose_centers(
                 list(range(w1)) + list(range(w2, M)),
-                somata1
+                somata1,
+                seed,
             )
             centers_h = choose_centers(
                 list(range(h1)) + list(range(h2, N)),
-                somata1
+                somata1,
+                seed,
             )
             centers_ids1 = [(x, y) for x, y in zip(centers_w, centers_h)]
 
             # Random allocation in the middle of the image
-            centers_w = choose_centers(range(w1, w2), somata2)
-            centers_h = choose_centers(range(h1, h2), somata2)
+            centers_w = choose_centers(range(w1, w2), somata2, seed)
+            centers_h = choose_centers(range(h1, h2), somata2, seed)
             centers_ids2 = [(x, y) for x, y in zip(centers_w, centers_h)]
 
             if centers_ids1 is not None and centers_ids2 is not None:
@@ -440,7 +469,8 @@ def receptive_fields(matrix, somata, dendrites, num_of_synapses,
         somata,
         num_of_synapses,
         num_channels,
-        rfs_type
+        rfs_type,
+        seed
     )
 
     return (mask_final.T.astype('int'), centers_ids)
@@ -463,12 +493,8 @@ def connectivity(dendrites, somata):
         The connectivity matrix between dendrites and somata.
 
     """
-    total_dends = dendrites*somata
-
-    mask = np.zeros((somata, total_dends))
-
+    mask = np.zeros((somata, dendrites*somata))
     for s in range(somata):
-
         mask[s, dendrites * s:dendrites * (s + 1)] = 1
 
     return (mask.T.astype('int'))

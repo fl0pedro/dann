@@ -86,7 +86,7 @@ for model_, model_type in zip(model_to_keep, models):
     for t in range(1, n_trials+1):
         postfix = f"sigma_{sigma}_trial_{t}_dends_{num_dends}_soma_{num_soma}"
         # Paths to model files
-        fname_model = pathlib.Path(f"{dirname}/{model_type}/model_{postfix}.h5")
+        fname_model = pathlib.Path(f"{dirname}/{model_type}/model_{postfix}.keras")
         # load the trained model
         model = keras.models.load_model(fname_model)
         # load the weights of dendritic and somatic layer

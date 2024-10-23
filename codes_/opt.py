@@ -20,8 +20,10 @@ from receptive_fields import random_connectivity
 
 
 def get_data(
-    validation_split, dtype='mnist', normalize=True, add_noise=False,
-    sigma=None, sequential=False, batch_size=None, seed=None):
+    validation_split, dtype='mnist', normalize=True,
+    add_noise=False, sigma=None, sequential=False,
+    batch_size=None, seed=None
+    ):
     """
     Get the dataset.
 
@@ -46,7 +48,7 @@ def get_data(
     batch_size : int, optional
         The size of the batch for mini-batch gradient descent. Default is None.
     seed : int, optional
-        The random seed. Default is None.
+        A seed to initialize the BitGenerator. The default is None.
 
     Returns
     -------
@@ -113,7 +115,7 @@ def get_data(
         dataset = sequential_preprocess(
             x_train, y_train, batch_size=batch_size,
             validation_split=validation_split,
-            seed=seed
+            seed=seed,
         )
         x_train = dataset['xtrain']
         y_train = dataset['ytrain']
@@ -139,9 +141,9 @@ def get_data(
     labels['test'] = y_test
 
     if add_noise:
-        np.random.seed(seed=seed)
+        rng = np.random.default_rng(seed)
         for key in data.keys():
-            pertrubation = np.random.normal(
+            pertrubation = rng.normal(
                 loc=0.0,
                 scale=sigma,
                 size=data[key].shape
@@ -177,8 +179,9 @@ def check_common_member(a, b):
     return(False)
 
 
-def sequential_preprocess(input_train, target_train, batch_size,
-                          validation_split, seed):
+def sequential_preprocess(
+    input_train, target_train, batch_size,
+    validation_split, seed=None):
     """
     Appearance of the data in a sequential manner,
     e.g., class 1, ..., class 1, class 2, ...
@@ -193,8 +196,8 @@ def sequential_preprocess(input_train, target_train, batch_size,
         The batch size.
     validation_split : float
         Percent of data to be kept for validation.
-    seed : int
-        The random seed.
+    seed : int, optional
+        A seed to initialize the BitGenerator. The default is None.
 
     Raises
     ------
@@ -207,7 +210,9 @@ def sequential_preprocess(input_train, target_train, batch_size,
         The sequential dataset (train and validation, data and targets).
 
     """
-    np.random.seed(seed)
+    # set the random Generator
+    rng = np.random.default_rng(seed)
+
     target_train = target_train.squeeze()
     a, b = np.unique(
         target_train,
@@ -226,7 +231,7 @@ def sequential_preprocess(input_train, target_train, batch_size,
     for i in range(len(a)):
         idx = np.argwhere(target_train == i).squeeze()
         val_set += list(
-            np.random.choice(
+            rng.choice(
                 idx,
                 size=kval[i],
                 replace=False
@@ -302,10 +307,12 @@ def perturb_array(arr, perturbation, amin=0, amax=1):
     return np.clip(arr + perturbation, amin, amax)
 
 
-def make_masks(dends, soma, synapses, num_layers, img_width, img_height,
-               num_classes=10, channels=1, conventional=False, sparse=False,
-               rfs=True, rfs_type='somatic', rfs_mode='random',
-               input_sample=None):
+def make_masks(
+    dends, soma, synapses, num_layers, img_width, img_height,
+    num_classes=10, channels=1, conventional=False, sparse=False,
+    rfs=True, rfs_type='somatic', rfs_mode='random',
+    input_sample=None, seed=None
+    ):
     """
     Make masks to transform a traditional ANN in a dendritic ANN.
 
@@ -371,7 +378,8 @@ def make_masks(dends, soma, synapses, num_layers, img_width, img_height,
                 opt=rfs_mode,
                 rfs_type=rfs_type,
                 prob=0.7,
-                num_channels=channels
+                num_channels=channels,
+                seed=seed
             )
         else:
             # if no RFs are enabled use random connectivity (like `sparse`)
@@ -385,7 +393,8 @@ def make_masks(dends, soma, synapses, num_layers, img_width, img_height,
             Mask_s_d = random_connectivity(
                 inputs=inputs_size*factor,
                 outputs=soma[i]*dends[i],
-                conns=synapses*soma[i]*dends[i]
+                conns=synapses*soma[i]*dends[i],
+                seed=seed,
             )
         Masks.append(Mask_s_d)
         # create a mask with `ones` for biases
@@ -401,7 +410,8 @@ def make_masks(dends, soma, synapses, num_layers, img_width, img_height,
             Mask_d_s = random_connectivity(
                 inputs=dends[i]*soma[i],
                 outputs=soma[i],
-                conns=dends[i]*soma[i]
+                conns=dends[i]*soma[i],
+                seed=seed,
             )
         # Append the masks
         Masks.append(Mask_d_s)
