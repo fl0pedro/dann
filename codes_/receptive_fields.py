@@ -250,6 +250,8 @@ def make_mask_matrix(
         The connectivity matrix.
 
     """
+    rng = np.random.default_rng(seed)
+    
     M, N = matrix.shape
     mask_final = np.zeros((dendrites*somata, matrix.size*num_channels))
     counter = 0
@@ -375,6 +377,7 @@ def receptive_fields(
         The centroids of RFs.
 
     """
+    rng = np.random.default_rng(seed)
     M, N = matrix.shape
 
     if rfs_type == 'somatic':
