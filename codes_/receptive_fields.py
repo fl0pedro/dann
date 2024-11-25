@@ -37,7 +37,7 @@ def nb_vals(matrix, indices, size=1, opt=None):
     return nb_indices
 
 
-def random_connectivity(inputs, outputs, opt='constant', conns=None, seed=None):
+def random_connectivity(inputs, outputs, opt='random', conns=None, seed=None):
     """
     Connectivity matrix between two layers.
 
@@ -86,7 +86,7 @@ def random_connectivity(inputs, outputs, opt='constant', conns=None, seed=None):
             raise ValueError('Specify `conns` as positive integer lower '
                              'than `inputs*outputs`')
         # nodes receive a random number of connections
-        indices = rng.choice(inputs*outputs, conns*outputs, replace=False)
+        indices = rng.choice(inputs*outputs, conns, replace=False)
         mask.flat[indices] = 1
 
     elif opt == 'constant':
