@@ -481,25 +481,26 @@ def receptive_fields(
     return (mask_final.T.astype('int'), centers_ids)
 
 
-def connectivity(dendrites, somata):
+def connectivity(inputs, outputs):
     """
-    Structured connectivity between dendrites and somata.
+    Structured connectivity between layer i and layer i+1 nodes.
 
     Parameters
     ----------
-    dendrites : int
-        Number of dendrites per soma.
+    inputs : int
+        Number of nodes in i-th layer.
     somata : int
-        Number of somata.
+        Number of nodes in (i+1)-th layer.
 
     Returns
     -------
     numpy.ndarray
-        The connectivity matrix between dendrites and somata.
+        The connectivity matrix between inputs and outputs.
 
     """
-    mask = np.zeros((somata, dendrites*somata))
-    for s in range(somata):
-        mask[s, dendrites * s:dendrites * (s + 1)] = 1
+    mask = np.zeros((inputs, outputs))
+    for j in range(outputs):
+        mask[inputs * j:inputs * (j + 1), j] = 1
 
-    return (mask.T.astype('int'))
+    return (mask.astype('int'))
+

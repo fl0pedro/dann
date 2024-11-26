@@ -403,8 +403,8 @@ def make_masks(
         # else random (i.e., sparse).
         if not sparse:
             Mask_d_s = connectivity(
-                dendrites=dends[i],
-                somata=soma[i]
+                inputs=dends[i]*soma[i],
+                outputs=soma[i]
             )
         else:
             Mask_d_s = random_connectivity(
