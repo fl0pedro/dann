@@ -494,14 +494,27 @@ def connectivity(inputs, outputs):
 
     Returns
     -------
-    numpy.ndarray
+    connectivity_matrix : numpy.ndarray [int]
         The connectivity matrix between inputs and outputs.
-
+    
+    Raises
+    ------
+    ValueError
+        If inputs or outputs are non-positive, or if inputs are not divisible by outputs.
     """
-    mask = np.zeros((inputs, outputs))
-    in_per_out = inputs // outputs  # nodes per node
-    for j in range(outputs):
-        mask[in_per_out * j:in_per_out * (j + 1), j] = 1
+    if outputs <= 0:
+        raise ValueError("Number of outputs must be greater than zero.")
+    if inputs <= 0:
+        raise ValueError("Number of inputs must be greater than zero.")
+    if inputs % outputs != 0:
+        raise ValueError("Inputs must be divisible by outputs without a remainder.")
 
-    return (mask.astype('int'))
+    connectivity_matrix = np.zeros((inputs, outputs), dtype=int)
+    in_per_out = inputs // outputs  # nodes per node
+    # Fill the connectivity matrix
+    for j in range(outputs):
+        start_index = in_per_out * j
+        end_index = start_index + in_per_out
+        connectivity_matrix[start_index:end_index, j] = 1
+    return connectivity_matrix
 
