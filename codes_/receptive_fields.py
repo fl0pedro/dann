@@ -499,8 +499,9 @@ def connectivity(inputs, outputs):
 
     """
     mask = np.zeros((inputs, outputs))
+    in_per_out = inputs // outputs  # nodes per node
     for j in range(outputs):
-        mask[inputs * j:inputs * (j + 1), j] = 1
+        mask[in_per_out * j:in_per_out * (j + 1), j] = 1
 
     return (mask.astype('int'))
 
