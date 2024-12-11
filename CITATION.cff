@@ -1,0 +1,15 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Chavlis"
+  given-names: "Spyridon"
+  orcid: "
+https://orcid.org/0000-0002-1046-1201"
+- family-names: "Poirazi"
+  given-names: "Panayiota"
+  orcid: "https://orcid.org/0000-0001-6152-595X"
+title: "dendritic ANNs for DL architectures"
+version: 1.0
+doi: 10.5281/zenodo.14360989
+date-released: 2024-12-10
+url: "https://github.com/Poirazi-Lab/dendritic_anns"
