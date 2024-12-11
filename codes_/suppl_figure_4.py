@@ -86,13 +86,13 @@ df_test_['test_acc'] *= 100
 # Create the figure
 fig = plt.figure(
     num=4,
-    figsize=(8.27*0.98, 11.69*0.25),
+    figsize=(7.086614*0.98, 11.69*0.25),
     layout='constrained'
     )
 
 # Create layout
 mosaic = [
-    ["A", "B"],
+    ["a", "b"],
 ]
 
 axd = fig.subplot_mosaic(
@@ -108,8 +108,8 @@ for label, ax in axd.items():
 # calculate the stats of
 eval_metrics = calculate_best_model(df_test_[df_test_['model'] == 'vANN-0.0001'])
 
-# Panel A
-panel = "A"
+# Panel a
+panel = "a"
 sns.lineplot(
     data=df_test_,
     x="trainable_params",
@@ -138,8 +138,8 @@ axd[panel].set_xlabel("trainable params")
 axd[panel].set_xscale("log")
 axd[panel].set_yscale("log")
 
-# Panel B
-panel = "B"
+# Panel b
+panel = "b"
 sns.lineplot(
     data=df_test_,
     x="trainable_params",
@@ -171,18 +171,9 @@ axd[panel].set_xscale("log")
 
 # fig final format and save
 figname = f"{dirname_figs}/supplementary_figure_4"
+file_format = 'svg'
 fig.savefig(
-    pathlib.Path(f"{figname}.pdf"),
-    bbox_inches='tight',
-    dpi=600
-)
-fig.savefig(
-    pathlib.Path(f"{figname}.svg"),
-    bbox_inches='tight',
-    dpi=600
-)
-fig.savefig(
-    pathlib.Path(f"{figname}.png"),
+    pathlib.Path(f"{figname}.{file_format}"),
     bbox_inches='tight',
     dpi=600
 )

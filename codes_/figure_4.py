@@ -1,62 +1,58 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Mon Jul  8 08:45:22 2024
+Created on Mon Jul  8 09:44:19 2024
 
 @author: spiros
 """
 
 import os
-import pickle
 import pathlib
-import numpy as np
+import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib.transforms as mtransforms
 
-from plotting_functions import fix_names, keep_models
-from plotting_functions import my_style, calculate_best_model
+from plotting_functions import my_style, calc_eff_scores
+from plotting_functions import keep_models
 
 # Set the seaborn style and color palette
 sns.set_style("white")
 plt.rcParams.update(my_style())
 
-datatype = 'fmnist'
+palette = [
+    '#8de5a1', '#467250',
+    '#ff9f9b', '#7f4f4d',
+    '#a1c9f4', '#607892',
+    '#d0bbff', '#7c7099'
+]
+
 dirname_figs = '../FinalFigs_manuscript'
 if not os.path.exists(f"{dirname_figs}"):
     os.mkdir(f"{dirname_figs}")
 
-seq = False
-seq_tag = "_sequential" if seq else ""
 num_layers = 1
 data_dir = "../DATA/"
-dirname = f"{data_dir}/results_{datatype}_{num_layers}_layer{seq_tag}/"
 
 # Create the figure
 fig = plt.figure(
     num=4,
-    figsize=(8.27*0.98, 11.69*0.9),
+    figsize=(7.086614*0.98, 11.69*0.5),
     layout='constrained'
     )
 
-# Create layout
-mosaic = [
-    ["A", "B"],
-    ["C", "D"],
-    ["E", "F"]
-]
-
+# create the mosaic
 axd = fig.subplot_mosaic(
-    mosaic,
+    [["a", "b"],
+     ["c", "d"],
+     ],
     sharex=True
 )
 
+# add panel labels
 for label, ax in axd.items():
     # label physical distance to the left and up:
-    trans = mtransforms.ScaledTranslation(
-        -20/72, 7/72,
-        fig.dpi_scale_trans
-    )
+    trans = mtransforms.ScaledTranslation(-20/72, 7/72, fig.dpi_scale_trans)
     ax.text(
         0.0, 1.0,
         label,
@@ -65,226 +61,188 @@ for label, ax in axd.items():
         va='bottom'
     )
 
+# load best models
+fname_models = f"{data_dir}/all_datasets_best_models_final.pkl"
+DATA = pd.read_pickle(open(fname_models, 'rb'))
 
-# Load data (deserialize)
-fname_store =  pathlib.Path(f"{dirname}/output_all_final")
-with open(f'{fname_store}.pkl', 'rb') as file:
-    results = pickle.load(file)
-df_all = fix_names(results['training'])
-df_test = fix_names(results['testing'])
-
-# Keep models to plot, i.e., vanilla ANNs.
-palette = [
-    '#8de5a1', '#495054'
-]
-
-model_to_keep = [
+models_to_keep = [
     'dANN-R',
     'vANN-R',
-]
-
-df_all_ = keep_models(df_all, model_to_keep)
-df_test_ = keep_models(df_test, model_to_keep)
-df_all_['train_acc'] *= 100
-df_all_['val_acc'] *= 100
-df_test_['test_acc'] *= 100
-
-# calculate the stats of
-eval_metrics = calculate_best_model(df_test_[df_test_['model'] == 'vANN-R'])
-
-# Panel A
-panel = "A"
-sns.lineplot(
-    data=df_test_,
-    x="trainable_params", y="test_loss",
-    hue="model", style="model",
-    markers=True, dashes=False,
-    ax=axd[panel], palette=palette,
-)
-axd[panel].axhline(
-    np.min(eval_metrics, axis=0)[0],
-    linestyle="--", c="k",
-    linewidth=1.5,
-)
-axd[panel].axvline(
-    eval_metrics[np.argmin(eval_metrics[:, 0])][-1],
-    linestyle="--", c="k",
-    linewidth=1.5,
-)
-axd[panel].set_ylabel("test loss")
-axd[panel].set_xlabel("trainable params")
-axd[panel].set_xscale("log")
-
-# Panel B
-panel = "B"
-sns.lineplot(
-    data=df_test_,
-    x="trainable_params", y="test_acc",
-    hue="model", style="model",
-    markers=True, dashes=False,
-    legend=False,
-    ax=axd[panel], palette=palette,
-)
-axd[panel].axhline(
-    np.max(eval_metrics, axis=0)[1],
-    linestyle="--", c="k",
-    linewidth=1.5,
-)
-axd[panel].axvline(
-    eval_metrics[np.argmax(eval_metrics[:, 1])][-1],
-    linestyle="--", c="k",
-    linewidth=1.5,
-)
-axd[panel].set_ylabel("test accuracy (%)")
-axd[panel].set_xlabel("trainable params")
-axd[panel].set_xscale("log")
-
-# Keep models to plot, i.e., vanilla ANNs.
-palette = [
-    '#ff9f9b', '#495054'
-]
-
-model_to_keep = [
     'dANN-LRF',
     'vANN-LRF',
-]
-
-df_all_ = keep_models(df_all, model_to_keep)
-df_test_ = keep_models(df_test, model_to_keep)
-df_all_['train_acc'] *= 100
-df_all_['val_acc'] *= 100
-df_test_['test_acc'] *= 100
-
-# calculate the stats of
-eval_metrics = calculate_best_model(df_test_[df_test_['model'] == 'vANN-LRF'])
-
-# Panel C
-panel = "C"
-sns.lineplot(
-    data=df_test_,
-    x="trainable_params", y="test_loss",
-    hue="model", style="model",
-    markers=True, dashes=False,
-    ax=axd[panel], palette=palette,
-)
-axd[panel].axhline(
-    np.min(eval_metrics, axis=0)[0],
-    linestyle="--", c="k",
-    linewidth=1.5,
-)
-axd[panel].axvline(
-    eval_metrics[np.argmin(eval_metrics[:, 0])][-1],
-    linestyle="--", c="k",
-    linewidth=1.5,
-)
-axd[panel].set_ylabel("test loss")
-axd[panel].set_xlabel("trainable params")
-axd[panel].set_xscale("log")
-
-# Panel D
-panel = "D"
-sns.lineplot(
-    data=df_test_,
-    x="trainable_params", y="test_acc",
-    hue="model", style="model",
-    markers=True, dashes=False,
-    legend=False,
-    ax=axd[panel], palette=palette,
-)
-axd[panel].axhline(
-    np.max(eval_metrics, axis=0)[1],
-    linestyle="--", c="k",
-    linewidth=1.5,
-)
-axd[panel].axvline(
-    eval_metrics[np.argmax(eval_metrics[:, 1])][-1],
-    linestyle="--", c="k",
-    linewidth=1.5,
-)
-axd[panel].set_ylabel("test accuracy (%)")
-axd[panel].set_xlabel("trainable params")
-axd[panel].set_xscale("log")
-
-# Keep models to plot, i.e., vanilla ANNs.
-palette = [
-    '#a1c9f4', '#495054'
-]
-
-model_to_keep = [
     'dANN-GRF',
     'vANN-GRF',
+    'pdANN',
+    'vANN',
 ]
 
-df_all_ = keep_models(df_all, model_to_keep)
-df_test_ = keep_models(df_test, model_to_keep)
-df_all_['train_acc'] *= 100
-df_all_['val_acc'] *= 100
-df_test_['test_acc'] *= 100
+for key in DATA.keys():
+    DATA[key] = keep_models(DATA[key], models_to_keep)
 
-# calculate the stats of
-eval_metrics = calculate_best_model(df_test_[df_test_['model'] == 'vANN-GRF'])
 
-# Panel E
-panel = "E"
-sns.lineplot(
-    data=df_test_,
-    x="trainable_params", y="test_loss",
-    hue="model", style="model",
-    markers=True, dashes=False,
-    ax=axd[panel], palette=palette,
-)
-axd[panel].axhline(
-    np.min(eval_metrics, axis=0)[0],
-    linestyle="--", c="k",
-    linewidth=1.5,
-)
-axd[panel].axvline(
-    eval_metrics[np.argmin(eval_metrics[:, 0])][-1],
-    linestyle="--", c="k",
-    linewidth=1.5,
-)
-axd[panel].set_ylabel("test loss")
-axd[panel].set_xlabel("trainable params")
-axd[panel].set_xscale("log")
+df_test_subtract = pd.DataFrame()
+df_test = DATA["compare_acc"]
+for data in df_test["data"].unique():
+    df_test_ = df_test[df_test["data"] == data]
+    df_test_subtract_ = pd.DataFrame()
+    for m in range(4):
+        m1 = models_to_keep[m]
+        m2 = models_to_keep[m+4]
 
-# Panel F
-panel = "F"
-sns.lineplot(
-    data=df_test_,
-    x="trainable_params", y="test_acc",
-    hue="model", style="model",
-    markers=True, dashes=False,
+        df_1 = df_test_[df_test_["model"] == m1].reset_index()
+        df_2 = df_test_[df_test_["model"] == m2].reset_index()
+        df_test_subtract_["trainable_params"] = df_1["trainable_params"] - df_2["trainable_params"]
+        df_test_subtract_["model"] = f"Δ({m1}, {m2})"
+        df_test_subtract_["data"] = data
+        df_test_subtract = pd.concat([df_test_subtract, df_test_subtract_])
+
+df_test_subtract = df_test_subtract.reset_index()
+
+
+# panel a
+panel = "a"
+sns.barplot(
+    data=DATA["compare_acc"],
+    x="data",
+    y="trainable_params",
+    hue="model",
+    errorbar="sd",
     legend=False,
-    ax=axd[panel], palette=palette,
+    palette=palette,
+    ax=axd[panel]
 )
-axd[panel].axhline(
-    np.max(eval_metrics, axis=0)[1],
-    linestyle="--", c="k",
-    linewidth=1.5,
-)
-axd[panel].axvline(
-    eval_metrics[np.argmax(eval_metrics[:, 1])][-1],
-    linestyle="--", c="k",
-    linewidth=1.5,
-)
-axd[panel].set_ylabel("test accuracy (%)")
-axd[panel].set_xlabel("trainable params")
-axd[panel].set_xscale("log")
+axd[panel].set_yscale("log")
+axd[panel].set_ylabel("trainable params")
+axd[panel].set_title("matching vANN's highest accuracy")
+
+df_test_subtract = pd.DataFrame()
+df_test = DATA["compare_loss"]
+for data in df_test["data"].unique():
+    df_test_ = df_test[df_test["data"] == data]
+    df_test_subtract_ = pd.DataFrame()
+    for m in range(4):
+        m1 = models_to_keep[m]
+        m2 = models_to_keep[m+4]
+
+        df_1 = df_test_[df_test_["model"] == m1].reset_index()
+        df_2 = df_test_[df_test_["model"] == m2].reset_index()
+        df_test_subtract_["trainable_params"] = df_1["trainable_params"] - df_2["trainable_params"]
+        df_test_subtract_["model"] = f"Δ({m1}, {m2})"
+        df_test_subtract_["data"] = data
+        df_test_subtract = pd.concat([df_test_subtract, df_test_subtract_])
+
+df_test_subtract = df_test_subtract.reset_index()
+
+# panel b
+panel = "b"
+sns.barplot(
+    data=DATA["compare_loss"],
+    x="data",
+    y="trainable_params",
+    hue="model",
+    errorbar="sd",
+    legend=True,
+    palette=palette,
+    ax=axd[panel])
+axd[panel].set_yscale("log")
+axd[panel].set_ylabel("trainable params")
+axd[panel].set_title("matching vANN's minimum loss")
+
+
+palette = [
+    '#8de5a1',
+    '#ff9f9b',
+    '#a1c9f4',
+    '#d0bbff',
+]
+
+models_to_keep = [
+    'dANN-R',
+    'dANN-LRF',
+    'dANN-GRF',
+    'pdANN',
+    'vANN-R',
+    'vANN-LRF',
+    'vANN-GRF',
+    'vANN',
+]
+
+# normalized accuracy
+df_test_subtract = pd.DataFrame()
+df_test = DATA["best_acc"]
+df_test = calc_eff_scores(df_test, form='acc')
+for data in df_test["data"].unique():
+    df_test_ = df_test[df_test["data"] == data]
+    df_test_subtract_ = pd.DataFrame()
+    for m in range(4):
+        m1 = models_to_keep[m]
+        m2 = models_to_keep[m+4]
+
+        df_1 = df_test_[df_test_["model"] == m1].reset_index()
+        df_2 = df_test_[df_test_["model"] == m2].reset_index()
+        df_test_subtract_["normed_acc"] = df_1["normed_acc"] - df_2["normed_acc"]
+        df_test_subtract_["model"] = f"Δ({m1}, {m2})"
+        df_test_subtract_["data"] = data
+        df_test_subtract = pd.concat([df_test_subtract, df_test_subtract_])
+
+df_test_subtract = df_test_subtract.reset_index()
+
+# panel c
+panel = "c"
+sns.barplot(
+    data=df_test_subtract,
+    x="data",
+    y="normed_acc",
+    hue="model",
+    palette=palette,
+    errorbar=("sd"),
+    legend=False,
+    ax=axd[panel],
+    )
+axd[panel].set_ylabel("Δ accuracy eff score")
+axd[panel].set_title("best models")
+
+# normalized accuracy
+df_test_subtract = pd.DataFrame()
+df_test = DATA["best_acc"]
+df_test = calc_eff_scores(df_test, form='loss')
+for data in df_test["data"].unique():
+    df_test_ = df_test[df_test["data"] == data]
+    df_test_subtract_ = pd.DataFrame()
+    for m in range(4):
+        m1 = models_to_keep[m]
+        m2 = models_to_keep[m+4]
+
+        df_1 = df_test_[df_test_["model"] == m1].reset_index()
+        df_2 = df_test_[df_test_["model"] == m2].reset_index()
+        df_test_subtract_["normed_loss"] = df_1["normed_loss"] - df_2["normed_loss"]
+        df_test_subtract_["model"] = f"Δ({m1}, {m2})"
+        df_test_subtract_["data"] = data
+        df_test_subtract = pd.concat([df_test_subtract, df_test_subtract_])
+
+df_test_subtract = df_test_subtract.reset_index()
+
+# panel d
+panel = "d"
+sns.barplot(
+    data=df_test_subtract,
+    x="data",
+    y="normed_loss",
+    hue="model",
+    errorbar=("sd"),
+    legend=True,
+    palette=palette,
+    ax=axd[panel])
+axd[panel].legend_.set_title(None)
+axd[panel].set_ylabel("Δ loss eff score")
+axd[panel].set_title("best models")
+
 
 # fig final format and save
 figname = f"{dirname_figs}/figure_4"
+file_format = 'svg'
 fig.savefig(
-    pathlib.Path(f"{figname}.pdf"),
-    bbox_inches='tight',
-    dpi=600
-)
-fig.savefig(
-    pathlib.Path(f"{figname}.svg"),
-    bbox_inches='tight',
-    dpi=600
-)
-fig.savefig(
-    pathlib.Path(f"{figname}.png"),
+    pathlib.Path(f"{figname}.{file_format}"),
     bbox_inches='tight',
     dpi=600
 )

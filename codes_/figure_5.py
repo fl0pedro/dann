@@ -38,7 +38,7 @@ dirname = f"{data_dir}/results_{datatype}_{num_layers}_layer{seq_tag}/"
 # Create the figure
 fig = plt.figure(
     num=5,
-    figsize=(8.27*0.98, 11.69*0.8),
+    figsize=(7.086614*0.98, 11.69*0.8),
     layout='tight'
 )
 
@@ -51,9 +51,9 @@ subfigs = fig.subfigures(
 
 # Create the top left subfigure
 mosaic = [
-    ["A", "B", "C", "D"],
-    ["E", "F", "G", "H"],
-    ["I", "J", "K", "L"]
+    ["a", "b", "c", "d"],
+    ["e", "f", "g", "h"],
+    ["i", "j", "k", "l"]
 ]
 
 axt = subfigs[0].subplot_mosaic(
@@ -71,9 +71,9 @@ trans = mtransforms.ScaledTranslation(
     fig.dpi_scale_trans
 )
 
-axt["A"].text(
-    0.0, 1.0, "A",
-    transform=axt["A"].transAxes + trans,
+axt["a"].text(
+    0.0, 1.0, "a",
+    transform=axt["a"].transAxes + trans,
     fontsize='large',
     va='bottom'
 )
@@ -168,7 +168,7 @@ with open(fname_entropies, 'rb') as file:
 h_dend_all = entropies_loaded['dendrites']
 h_soma_all = entropies_loaded['soma']
 
-mosaic = [["A", "B", "C", "D"]]
+mosaic = [["a", "b", "c", "d"]]
 axm = subfigs[1].subplot_mosaic(
     mosaic, sharey=True, sharex=True,
     gridspec_kw={
@@ -180,9 +180,9 @@ trans = mtransforms.ScaledTranslation(
     fig.dpi_scale_trans
 )
 
-axm["A"].text(
-    0.0, 1.0, "B",
-    transform=axm["A"].transAxes + trans,
+axm["a"].text(
+    0.0, 1.0, "b",
+    transform=axm["a"].transAxes + trans,
     fontsize='large',
     va='bottom'
 )
@@ -224,7 +224,7 @@ with open(fname_selectivity, 'rb') as file:
 s_dend_all = slectivity_loaded['dendrites']
 s_soma_all = slectivity_loaded['soma']
 
-mosaic = [["A", "B", "C", "D"]]
+mosaic = [["a", "b", "c", "d"]]
 axb = subfigs[2].subplot_mosaic(
     mosaic,
     sharey=True,
@@ -239,9 +239,9 @@ trans = mtransforms.ScaledTranslation(
     fig.dpi_scale_trans
 )
 
-axb["A"].text(
-    0.0, 1.0, "C",
-    transform=axb["A"].transAxes + trans,
+axb["a"].text(
+    0.0, 1.0, "c",
+    transform=axb["a"].transAxes + trans,
     fontsize='large',
     va='bottom'
 )
@@ -274,18 +274,9 @@ for i, (model_type, (label, ax)) in enumerate(zip(models, axb.items())):
 
 # fig final format and save
 figname = f"{dirname_figs}/figure_5"
+file_format = 'svg'
 fig.savefig(
-    pathlib.Path(f"{figname}.pdf"),
-    bbox_inches='tight',
-    dpi=600
-)
-fig.savefig(
-    pathlib.Path(f"{figname}.svg"),
-    bbox_inches='tight',
-    dpi=600
-)
-fig.savefig(
-    pathlib.Path(f"{figname}.png"),
+    pathlib.Path(f"{figname}.{file_format}"),
     bbox_inches='tight',
     dpi=600
 )

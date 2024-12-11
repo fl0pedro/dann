@@ -34,13 +34,13 @@ if not os.path.exists(f"{dirname_figs}"):
 # Create the figure
 fig = plt.figure(
     num=7,
-    figsize=(8.27*0.98, 11.69*0.5),
+    figsize=(7.086614*0.98, 11.69*0.5),
     layout='constrained'
 )
 
 # create the mosaic
 axd = fig.subplot_mosaic(
-    [["A"]],
+    [["a"]],
 )
 
 # add panel labels
@@ -72,8 +72,8 @@ models_to_keep = [
 for key in DATA.keys():
     DATA[key] = keep_models(DATA[key], models_to_keep)
 
-# Panel A
-panel = "A"
+# Panel a
+panel = "a"
 sns.boxplot(
     data=DATA["best_acc"],
     x="data",
@@ -91,18 +91,9 @@ axd[panel].axhline(50, linestyle="dashed", color='k')
 
 # fig final format and save
 figname = f"{dirname_figs}/supplementary_figure_7"
+file_format = 'svg'
 fig.savefig(
-    pathlib.Path(f"{figname}.pdf"),
-    bbox_inches='tight',
-    dpi=600
-)
-fig.savefig(
-    pathlib.Path(f"{figname}.svg"),
-    bbox_inches='tight',
-    dpi=600
-)
-fig.savefig(
-    pathlib.Path(f"{figname}.png"),
+    pathlib.Path(f"{figname}.{file_format}"),
     bbox_inches='tight',
     dpi=600
 )

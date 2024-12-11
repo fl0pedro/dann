@@ -67,7 +67,7 @@ for nrep in range(1, reps+1):
 # Create the figure
 fig = plt.figure(
     num=6,
-    figsize=(8.27*0.98, 11.69*0.7),
+    figsize=(7.086614*0.98, 11.69*0.7),
     layout='constrained'
     )
 
@@ -78,10 +78,10 @@ subfigs = fig.subfigures(
 
 # create the mosaic
 axd = subfigs[0].subplot_mosaic(
-    [["A", "B",],
-     ["C", "D",],
-     ["E", "F",],
-     ["G", "H",],],
+    [["a", "b",],
+     ["c", "d",],
+     ["e", "f",],
+     ["g", "h",],],
     sharex=True,
     sharey=True,
     gridspec_kw={
@@ -91,8 +91,8 @@ axd = subfigs[0].subplot_mosaic(
 )
 
 # add panel labels
-mos = ["A", "B", "C", "D"]
-mos_ = ["A", "C", "E", "G"]
+mos = ["a", "b", "c", "d"]
+mos_ = ["a", "c", "e", "g"]
 axd_ = {k: v for k, v in axd.items() if k in mos_}
 for i, (label, ax) in enumerate(axd_.items()):
     # label physical distance to the left and up:
@@ -129,7 +129,7 @@ palette3 = list(p.T.flatten())
 
 # create the mosaic
 axd = subfigs[1].subplot_mosaic(
-    [["E"], ["F"], ["G"]],
+    [["e"], ["f"], ["g"]],
     gridspec_kw={
     "hspace": 0.2,
     "wspace":0.2
@@ -137,14 +137,14 @@ axd = subfigs[1].subplot_mosaic(
 )
 
 # add panel labels
-mos = ["E", "F", "G"]
+mos = ["e", "f", "g"]
 for i, (label, ax) in enumerate(axd.items()):
     # label physical distance to the left and up:
     trans = mtransforms.ScaledTranslation(-20/72, 7/72, fig.dpi_scale_trans)
     ax.text(0.0, 1.0, mos[i], transform=ax.transAxes + trans,
             fontsize='large', va='bottom')
 
-panel = "E"
+panel = "e"
 sns.barplot(
     data=df_scores_,
     x=None,
@@ -159,7 +159,7 @@ axd[panel].set_xticklabels([])
 axd[panel].set_ylabel('Silhouette score')
 axd[panel].set_ylim([0.0, 0.35])
 
-panel = "F"
+panel = "f"
 sns.barplot(
     data=df_scores_,
     x=None,
@@ -174,7 +174,7 @@ axd[panel].set_xticklabels([])
 axd[panel].set_ylabel('NH score')
 axd[panel].set_ylim([0.6, 0.85])
 
-panel = "G"
+panel = "g"
 sns.barplot(
     data=df_scores_,
     x=None,
@@ -191,18 +191,9 @@ axd[panel].set_ylim([0.96, 1.0])
 
 # fig final format and save
 figname = f"{dirname_figs}/figure_6"
+file_format = 'svg'
 fig.savefig(
-    pathlib.Path(f"{figname}.pdf"),
-    bbox_inches='tight',
-    dpi=600
-)
-fig.savefig(
-    pathlib.Path(f"{figname}.svg"),
-    bbox_inches='tight',
-    dpi=600
-)
-fig.savefig(
-    pathlib.Path(f"{figname}.png"),
+    pathlib.Path(f"{figname}.{file_format}"),
     bbox_inches='tight',
     dpi=600
 )

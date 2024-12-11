@@ -35,14 +35,14 @@ data_dir = "../DATA/"
 # Create the figure
 fig = plt.figure(
     num=3,
-    figsize=(8.27*0.98, 11.69*0.5),
+    figsize=(7.086614*0.98, 11.69*0.5),
     layout='constrained'
 )
 
 # create the mosaic
 axd = fig.subplot_mosaic(
-    [["A", "B"],
-     ["C", "D"],
+    [["a", "b"],
+     ["c", "d"],
      ],
     sharex=True
 )
@@ -76,8 +76,8 @@ models_to_keep = [
 for key in DATA.keys():
     DATA[key] = keep_models(DATA[key], models_to_keep)
 
-# Panel A
-panel = "A"
+# Panel a
+panel = "a"
 sns.barplot(
     data=DATA["compare_acc"],
     x="data",
@@ -92,7 +92,8 @@ axd[panel].set_yscale("log")
 axd[panel].set_ylabel("trainable params")
 axd[panel].set_title("matching vANN's highest accuracy")
 
-panel = "B"
+# panel b
+panel = "b"
 sns.barplot(
     data=DATA["compare_loss"],
     x="data",
@@ -111,7 +112,8 @@ axd[panel].set_title("matching vANN's minimum loss")
 df_ = DATA["best_acc"].reset_index()
 df_ = calc_eff_scores(df_, form='acc')
 
-panel = "C"
+# panel c
+panel = "c"
 sns.barplot(
     data=df_,
     x="data",
@@ -129,7 +131,8 @@ axd[panel].set_title("effeciency of the best model (highest accuracy)")
 df_ = DATA["best_acc"]
 df_ = calc_eff_scores(df_, form='loss')
 
-panel = "D"
+# panel d
+panel = "d"
 sns.barplot(
     data=df_,
     x="data",
@@ -147,18 +150,9 @@ axd[panel].set_title("effeciency of the best model (minimum loss)")
 
 # fig final format and save
 figname = f"{dirname_figs}/figure_3"
+file_format = 'svg'
 fig.savefig(
-    pathlib.Path(f"{figname}.pdf"),
-    bbox_inches='tight',
-    dpi=600
-)
-fig.savefig(
-    pathlib.Path(f"{figname}.svg"),
-    bbox_inches='tight',
-    dpi=600
-)
-fig.savefig(
-    pathlib.Path(f"{figname}.png"),
+    pathlib.Path(f"{figname}.{file_format}"),
     bbox_inches='tight',
     dpi=600
 )

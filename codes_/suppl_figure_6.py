@@ -77,15 +77,15 @@ df_test_['test_acc'] *= 100
 # Create the figure
 fig = plt.figure(
     num=6,
-    figsize=(8.27*0.98, 11.69*0.80),
+    figsize=(7.086614*0.98, 11.69*0.8),
     layout='constrained',
     )
 
 # Create layout
 mosaic = [
-    ["A", "B"],
-    ["C", "D"],
-    ["E", "F"],
+    ["a", "b"],
+    ["c", "d"],
+    ["e", "f"],
 ]
 
 axd = fig.subplot_mosaic(
@@ -104,8 +104,8 @@ for label, ax in axd.items():
         va='bottom'
     )
 
-# Panel A
-panel = "A"
+# Panel a
+panel = "a"
 sns.boxplot(
     data=df_test_[(df_test_['num_soma'] == 256) & (df_test_['num_dends'] == 8)],
     x="layers",
@@ -118,8 +118,8 @@ sns.boxplot(
 axd[panel].set_ylabel("test loss")
 axd[panel].set_title("num dendrites per soma: 8")
 
-# Panel B
-panel = "B"
+# Panel b
+panel = "b"
 sns.boxplot(
     data=df_test_[(df_test_['num_soma'] == 256) & (df_test_['num_dends'] == 8)],
     x="layers",
@@ -132,8 +132,8 @@ sns.boxplot(
 axd[panel].set_ylabel("test accuracy (%)")
 
 
-# Panel C
-panel = "C"
+# Panel c
+panel = "c"
 sns.boxplot(
     data=df_test_[(df_test_['num_soma'] == 256) & (df_test_['num_dends'] == 16)],
     x="layers",
@@ -146,8 +146,8 @@ sns.boxplot(
 axd[panel].set_ylabel("test loss")
 axd[panel].set_title("num dendrites per soma: 16")
 
-# Panel D
-panel = "D"
+# Panel d
+panel = "d"
 sns.boxplot(
     data=df_test_[(df_test_['num_soma'] == 256) & (df_test_['num_dends'] == 16)],
     x="layers",
@@ -159,8 +159,8 @@ sns.boxplot(
 )
 axd[panel].set_ylabel("test accuracy (%)")
 
-# Panel E
-panel = "E"
+# Panel e
+panel = "e"
 sns.boxplot(
     data=df_test_[(df_test_['num_soma'] == 256) & (df_test_['num_dends'] == 32)],
     x="layers",
@@ -174,8 +174,8 @@ axd[panel].set_ylabel("test loss")
 axd[panel].set_xlabel("dendrosomatic layers")
 axd[panel].set_title("num dendrites per soma: 32")
 
-# Panel F
-panel = "F"
+# Panel f
+panel = "f"
 sns.boxplot(
     data=df_test_[(df_test_['num_soma'] == 256) & (df_test_['num_dends'] == 32)],
     x="layers",
@@ -189,18 +189,9 @@ axd[panel].set_xlabel("dendrosomatic layers")
 
 # fig final format and save
 figname = f"{dirname_figs}/supplementary_figure_6"
+file_format = 'svg'
 fig.savefig(
-    pathlib.Path(f"{figname}.pdf"),
-    bbox_inches='tight',
-    dpi=600
-)
-fig.savefig(
-    pathlib.Path(f"{figname}.svg"),
-    bbox_inches='tight',
-    dpi=600
-)
-fig.savefig(
-    pathlib.Path(f"{figname}.png"),
+    pathlib.Path(f"{figname}.{file_format}"),
     bbox_inches='tight',
     dpi=600
 )

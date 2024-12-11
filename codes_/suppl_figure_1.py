@@ -24,7 +24,7 @@ if not os.path.exists(f"{dirname_figs}"):
 # Create the figure
 fig = plt.figure(
     num=1,
-    figsize=(8.27*0.98, 11.69*0.9),
+    figsize=(7.086614*0.98, 11.69*0.9),
     layout='constrained'
 )
 
@@ -41,8 +41,8 @@ left_fig, right_fig = top_fig.subfigures(
     nrows=1, ncols=2,
 )
 
-make_subplots(fig, fig_part=left_fig, dataset="mnist", label="A")
-make_subplots(fig, fig_part=right_fig, dataset="fmnist", label="B")
+make_subplots(fig, fig_part=left_fig, dataset="mnist", label="a")
+make_subplots(fig, fig_part=right_fig, dataset="fmnist", label="b")
 
 ###############################################################################
 # Middle part of the figure
@@ -51,28 +51,19 @@ left_fig, right_fig = middle_fig.subfigures(
     nrows=1, ncols=2,
     )
 
-make_subplots(fig, fig_part=left_fig, dataset="kmnist", label="C")
-make_subplots(fig, fig_part=right_fig, dataset="cifar10", label="D")
+make_subplots(fig, fig_part=left_fig, dataset="kmnist", label="c")
+make_subplots(fig, fig_part=right_fig, dataset="cifar10", label="d")
 
 ###############################################################################
 # Bottom part of the figure
 ###############################################################################
-make_subplots(fig, fig_part=bottom_fig, dataset="emnist", label="E")
+make_subplots(fig, fig_part=bottom_fig, dataset="emnist", label="e")
 
 # fig final format and save
-figname = f"{dirname_figs}/supplementray_figure_1"
+figname = f"{dirname_figs}/supplementary_figure_1"
+file_format = 'svg'
 fig.savefig(
-    pathlib.Path(f"{figname}.pdf"),
-    bbox_inches='tight',
-    dpi=600
-)
-fig.savefig(
-    pathlib.Path(f"{figname}.svg"),
-    bbox_inches='tight',
-    dpi=600
-)
-fig.savefig(
-    pathlib.Path(f"{figname}.png"),
+    pathlib.Path(f"{figname}.{file_format}"),
     bbox_inches='tight',
     dpi=600
 )

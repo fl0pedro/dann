@@ -42,7 +42,7 @@ dirname = f"{data_dir}/results_{datatype}_{num_layers}_layer{seq_tag}/"
 # Create the figure
 fig = plt.figure(
     num=2,
-    figsize=(8.27*0.98, 11.69*0.7),
+    figsize=(7.086614*0.98, 11.69*0.7),
     layout='constrained'
     )
 # Separate in two subfigures - one top, one bottom
@@ -53,8 +53,8 @@ top_fig, bottom_fig = fig.subfigures(
 ###############################################################################
 # Top part of the figure
 ###############################################################################
-mosaic_l = [["A", "B", "C", "D", "E"],
-            ["F", "G", "H", "I", "J"],
+mosaic_l = [["a", "b", "c", "d", "e"],
+            ["f", "g", "h", "i", "j"],
             ]
 axd_l = top_fig.subplot_mosaic(
     mosaic_l,
@@ -67,8 +67,8 @@ axd_l = top_fig.subplot_mosaic(
 
 # label physical distance to the left and up:
 trans = mtransforms.ScaledTranslation(-20/72, 7/72, fig.dpi_scale_trans)
-axd_l["A"].text(0.0, 1.0, "A",
-                transform=axd_l["A"].transAxes + trans,
+axd_l["a"].text(0.0, 1.0, "a",
+                transform=axd_l["a"].transAxes + trans,
                 fontsize='large', va='bottom'
                 )
 
@@ -97,8 +97,8 @@ for i, (labels, ax) in enumerate(axd_l.items()):
 # Bottom part of the figure
 ###############################################################################
 # Create layout
-mosaic = [["B", "C"],
-          ["D", "E"],
+mosaic = [["b", "c"],
+          ["d", "e"],
           ]
 axd = bottom_fig.subplot_mosaic(
     mosaic,
@@ -134,8 +134,8 @@ df_test_['test_acc'] *= 100
 # calculate the stats of
 eval_metrics = calculate_best_model(df_test_[df_test_['model'] == 'vANN'])
 
-# Panel B
-panel = "B"
+# Panel b
+panel = "b"
 sns.lineplot(
     data=df_test_,
     x="trainable_params",
@@ -161,12 +161,11 @@ axd[panel].axvline(
     linewidth=1.5,
 )
 axd[panel].set_ylabel("test loss")
-# axd[panel].set_yscale("log")
 axd[panel].set_xlabel("trainable params")
 axd[panel].set_xscale("log")
 
-# Panel C
-panel = "C"
+# Panel c
+panel = "c"
 sns.lineplot(
     data=df_test_,
     x="trainable_params",
@@ -198,8 +197,8 @@ axd[panel].set_xscale("log")
 # Data for the dendritic/somatic number
 df = df_test_[(df_test_['num_soma'] > 200) & (df_test_['model'] != 'vANN')]
 
-# Panel D
-panel = "D"
+# Panel d
+panel = "d"
 sns.lineplot(
     data=df,
     y="test_loss",
@@ -219,12 +218,11 @@ axd[panel].axhline(
     linewidth=1.5,
 )
 axd[panel].set_ylabel("test loss")
-# axd[panel].set_yscale("log")
 axd[panel].set_xlabel("dendrites per soma")
 axd[panel].set_xscale("log", base=2)
 
-# Panel E
-panel = "E"
+# Panel e
+panel = "e"
 sns.lineplot(
     data=df,
     y="test_acc",
@@ -248,18 +246,9 @@ axd[panel].set_xscale("log", base=2)
 
 # fig final format and save
 figname = f"{dirname_figs}/figure_2"
+file_format = 'svg'
 fig.savefig(
-    pathlib.Path(f"{figname}.pdf"),
-    bbox_inches='tight',
-    dpi=600
-)
-fig.savefig(
-    pathlib.Path(f"{figname}.svg"),
-    bbox_inches='tight',
-    dpi=600
-)
-fig.savefig(
-    pathlib.Path(f"{figname}.png"),
+    pathlib.Path(f"{figname}.{file_format}"),
     bbox_inches='tight',
     dpi=600
 )

@@ -71,12 +71,12 @@ def my_style():
 
     """
     # color pallette
-    fsize = 12
+    fsize = 10
     my_style = {
         # Use LaTeX to write all text
         "text.usetex": False,
-        "font.family": "Times New Roman",
-        "font.weight": "bold",
+        "font.family": "Arial",
+        # "font.weight": "bold",
         # Use 16pt font in plots, to match 16pt font in document
         "axes.labelsize": fsize,
         "axes.titlesize": fsize,
@@ -87,14 +87,14 @@ def my_style():
         "legend.fontsize": fsize-2,
         "xtick.labelsize": fsize,
         "ytick.labelsize": fsize,
-        "axes.linewidth": 2.5,
-        "lines.markersize": 5.0,
-        "lines.linewidth": 2.0,
-        "xtick.major.width": 2.2,
-        "ytick.major.width": 2.2,
+        "axes.linewidth": 1.5,
+        "lines.markersize": 4.0,
+        "lines.linewidth": 1.0,
+        "xtick.major.width": 1.2,
+        "ytick.major.width": 1.2,
         "axes.edgecolor": "black",
-        "axes.labelweight": "bold",
-        "axes.titleweight": "bold",   # Add this line to set the title font weight to bold
+        # "axes.labelweight": "bold",
+        # "axes.titleweight": "bold",   # Add this line to set the title font weight to bold
         "axes.spines.right": False,
         "axes.spines.top": False,
         "svg.fonttype": "none"

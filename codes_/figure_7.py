@@ -41,7 +41,7 @@ if not os.path.exists(f"{dirname_figs}"):
 # Create the figure
 fig = plt.figure(
     num=7,
-    figsize=(8.27*0.98, 11.69*0.6),
+    figsize=(7.086614*0.98, 11.69*0.6),
     layout='constrained'
     )
 # Split the figure in top and bottom
@@ -53,8 +53,8 @@ subfigs = fig.subfigures(
 
 datatype = 'fmnist'
 
-mosaic = [["A", "B"],
-          ["C", "D"],
+mosaic = [["a", "b"],
+          ["c", "d"],
           ]
 
 axt = subfigs[0, 0].subplot_mosaic(
@@ -67,9 +67,9 @@ axt = subfigs[0, 0].subplot_mosaic(
 
 # label physical distance to the left and up:
 trans = mtransforms.ScaledTranslation(-20/72, 7/72, fig.dpi_scale_trans)
-axt["A"].text(
-    0.0, 1.0, "A",
-    transform=axt["A"].transAxes + trans,
+axt["a"].text(
+    0.0, 1.0, "a",
+    transform=axt["a"].transAxes + trans,
     fontsize='large', va='bottom'
 )
 
@@ -138,7 +138,7 @@ df_test_u['test_acc'] *= 100
 df_test_u = calc_eff_scores(df_test_u, form='acc')
 df_test_u = calc_eff_scores(df_test_u, form='loss')
 
-mosaic = [["A", "B"],
+mosaic = [["a", "b"],
           ]
 
 axt = subfigs[0, 1].subplot_mosaic(
@@ -151,12 +151,13 @@ axt = subfigs[0, 1].subplot_mosaic(
 
 # label physical distance to the left and up:
 trans = mtransforms.ScaledTranslation(-20/72, 7/72, fig.dpi_scale_trans)
-axt["A"].text(
-    0.0, 1.0, "B",
-    transform=axt["A"].transAxes + trans,
+axt["a"].text(
+    0.0, 1.0, "b",
+    transform=axt["a"].transAxes + trans,
     fontsize='large', va='bottom'
 )
 
+panel = "a"
 sns.lineplot(
     data=df_test_u,
     x="sigma",
@@ -165,11 +166,12 @@ sns.lineplot(
     errorbar=("sd", 1),
     palette=palette,
     legend=False,
-    ax=axt["A"])
-axt["A"].set_xlabel("noise level (σ)")
-axt["A"].set_ylabel("loss eff score")
-axt["A"].grid(False)
+    ax=axt[panel])
+axt[panel].set_xlabel("noise level (σ)")
+axt[panel].set_ylabel("loss eff score")
+axt[panel].grid(False)
 
+panel = "b"
 sns.lineplot(
     data=df_test_u,
     x="sigma",
@@ -178,14 +180,14 @@ sns.lineplot(
     errorbar=("sd", 1),
     palette=palette,
     legend=True,
-    ax=axt["B"])
-axt["B"].legend_.set_title(None)
-axt["B"].set_xlabel("noise level (σ)")
-axt["B"].set_ylabel("accuracy eff score")
-axt["B"].grid(False)
+    ax=axt[panel])
+axt[panel].legend_.set_title(None)
+axt[panel].set_xlabel("noise level (σ)")
+axt[panel].set_ylabel("accuracy eff score")
+axt[panel].grid(False)
 
 
-mosaic = [["A", ".", "B"],
+mosaic = [["a", ".", "b"],
           ]
 
 axt = subfigs[1, 0].subplot_mosaic(
@@ -197,9 +199,9 @@ axt = subfigs[1, 0].subplot_mosaic(
     )
 # label physical distance to the left and up:
 trans = mtransforms.ScaledTranslation(-20/72, 7/72, fig.dpi_scale_trans)
-axt["A"].text(
-    0.0, 1.0, "C",
-    transform=axt["A"].transAxes + trans,
+axt["a"].text(
+    0.0, 1.0, "c",
+    transform=axt["a"].transAxes + trans,
     fontsize='large', va='bottom'
 )
 
@@ -239,7 +241,7 @@ df_test_s = calc_eff_scores(df_test_s, form='acc')
 df_test_s = calc_eff_scores(df_test_s, form='loss')
 
 
-mosaic = [["A", "B"],
+mosaic = [["a", "b"],
           ]
 
 axt = subfigs[1, 1].subplot_mosaic(
@@ -252,11 +254,12 @@ axt = subfigs[1, 1].subplot_mosaic(
 
 # label physical distance to the left and up:
 trans = mtransforms.ScaledTranslation(-20/72, 7/72, fig.dpi_scale_trans)
-axt["A"].text(0.0, 1.0, "D",
-                transform=axt["A"].transAxes + trans,
+axt["a"].text(0.0, 1.0, "d",
+                transform=axt["a"].transAxes + trans,
                 fontsize='large', va='bottom'
                 )
 
+panel = "a"
 sns.barplot(
     data=df_test_s,
     x="model",
@@ -264,12 +267,13 @@ sns.barplot(
     hue="model",
     errorbar=("sd", 1),
     palette=palette,
-    ax=axt["A"])
-axt["A"].set_xticks([])
-axt["A"].set_ylabel("loss eff score")
-axt["A"].set_yscale("log")
-axt["A"].grid(False)
+    ax=axt[panel])
+axt[panel].set_xticks([])
+axt[panel].set_ylabel("loss eff score")
+axt[panel].set_yscale("log")
+axt[panel].grid(False)
 
+panel = "b"
 sns.barplot(
     data=df_test_s,
     x="model",
@@ -277,26 +281,17 @@ sns.barplot(
     hue="model",
     errorbar=("sd", 1),
     palette=palette,
-    ax=axt["B"])
-axt["B"].set_xticks([])
-axt["B"].set_ylabel("accuracy eff score")
-axt["B"].grid(False)
+    ax=axt[panel])
+axt[panel].set_xticks([])
+axt[panel].set_ylabel("accuracy eff score")
+axt[panel].grid(False)
 
 
 # fig final format and save
 figname = f"{dirname_figs}/figure_7"
+file_format = 'svg'
 fig.savefig(
-    pathlib.Path(f"{figname}.pdf"),
-    bbox_inches='tight',
-    dpi=600
-)
-fig.savefig(
-    pathlib.Path(f"{figname}.svg"),
-    bbox_inches='tight',
-    dpi=600
-)
-fig.savefig(
-    pathlib.Path(f"{figname}.png"),
+    pathlib.Path(f"{figname}.{file_format}"),
     bbox_inches='tight',
     dpi=600
 )
