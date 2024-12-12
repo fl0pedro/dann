@@ -134,6 +134,22 @@ def set_size(width, fraction=1):
 
 
 def keep_models(df_all, names):
+    """
+    Keep models to further test.
+
+    Parameters
+    ----------
+    df_all : TYPE
+        DESCRIPTION.
+    names : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    df : TYPE
+        DESCRIPTION.
+
+    """
     df = pd.DataFrame()
     for n in names:
         df = pd.concat([df,  df_all[(df_all['model'] == n)]])
@@ -141,6 +157,20 @@ def keep_models(df_all, names):
 
 
 def fix_names(df):
+    """
+    Replace and modify the names of a DataFrame.
+
+    Parameters
+    ----------
+    df : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    df : TYPE
+        DESCRIPTION.
+
+    """
     df = df.replace(['dend_ann_global_rfs'], 'dANN-GRF')
     df = df.replace(['dend_ann_local_rfs'], 'dANN-LRF')
     df = df.replace(['dend_ann_random'], 'dANN-R')
@@ -191,10 +221,45 @@ def calculate_best_model(df):
 
 
 def model_config(df, d, s, m):
+    """
+    Extract model configuration.
+
+    Parameters
+    ----------
+    df : TYPE
+        DESCRIPTION.
+    d : TYPE
+        DESCRIPTION.
+    s : TYPE
+        DESCRIPTION.
+    m : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    None.
+
+    """
     return(df[(df['num_dends'] == d) & (df['num_soma'] == s) & (df['model'] == m)])
 
 
 def keep_best_models_data(df, models_list):
+    """
+    Keep specific data.
+
+    Parameters
+    ----------
+    df : TYPE
+        DESCRIPTION.
+    models_list : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    TYPE
+        DESCRIPTION.
+
+    """
     df_ = pd.DataFrame()
     for model in models_list.keys():
         d, s = int(models_list[model][0]), int(models_list[model][1])
@@ -202,8 +267,38 @@ def keep_best_models_data(df, models_list):
     return df_.reset_index()
 
 
-def load_models(model_type, num_dends, num_soma, dirname,
-                sigma, trained, n_trials=5,):
+def load_models(
+        model_type, num_dends, num_soma, dirname,
+        sigma, trained, n_trials=5,
+    ):
+    """
+    Load the models.
+
+    Parameters
+    ----------
+    model_type : TYPE
+        DESCRIPTION.
+    num_dends : TYPE
+        DESCRIPTION.
+    num_soma : TYPE
+        DESCRIPTION.
+    dirname : TYPE
+        DESCRIPTION.
+    sigma : TYPE
+        DESCRIPTION.
+    trained : TYPE
+        DESCRIPTION.
+    n_trials : TYPE, optional
+        DESCRIPTION. The default is 5.
+     : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    models_list : TYPE
+        DESCRIPTION.
+
+    """
     models_list = []
     for t in range(1, n_trials+1):
         postfix = f"sigma_{sigma}_trial_{t}_dends_{num_dends}_soma_{num_soma}"
@@ -216,6 +311,28 @@ def load_models(model_type, num_dends, num_soma, dirname,
 
 
 def load_best_models(model_list, names, dirname, sigma=0.0, trained=True):
+    """
+    Load the best models.
+
+    Parameters
+    ----------
+    model_list : TYPE
+        DESCRIPTION.
+    names : TYPE
+        DESCRIPTION.
+    dirname : TYPE
+        DESCRIPTION.
+    sigma : TYPE, optional
+        DESCRIPTION. The default is 0.0.
+    trained : TYPE, optional
+        DESCRIPTION. The default is True.
+
+    Returns
+    -------
+    models_all : TYPE
+        DESCRIPTION.
+
+    """
     models_all = {}
     for model, name in zip(model_list.keys(), names):
         d, s = int(model_list[model][0]), int(model_list[model][1])
@@ -228,8 +345,32 @@ def load_best_models(model_list, names, dirname, sigma=0.0, trained=True):
     return models_all
 
 
-def find_best_models(df, model_names, metric='accuracy', compare=True,
-                     baseline='vANN'):
+def find_best_models(
+        df, model_names, metric='accuracy', compare=True,
+        baseline='vANN'
+    ):
+    """
+    Find the best models.
+
+    Parameters
+    ----------
+    df : TYPE
+        DESCRIPTION.
+    model_names : TYPE
+        DESCRIPTION.
+    metric : TYPE, optional
+        DESCRIPTION. The default is 'accuracy'.
+    compare : TYPE, optional
+        DESCRIPTION. The default is True.
+    baseline : TYPE, optional
+        DESCRIPTION. The default is 'vANN'.
+
+    Returns
+    -------
+    models_best : TYPE
+        DESCRIPTION.
+
+    """
 
     model_names_ = [n for n in model_names if n != baseline]
     if compare:
@@ -274,6 +415,27 @@ def find_best_models(df, model_names, metric='accuracy', compare=True,
 
 
 def get_class_names(dataset, labels):
+    """
+    Get the class names based on a given dataset.
+
+    Parameters
+    ----------
+    dataset : TYPE
+        DESCRIPTION.
+    labels : TYPE
+        DESCRIPTION.
+
+    Raises
+    ------
+    ValueError
+        DESCRIPTION.
+
+    Returns
+    -------
+    TYPE
+        DESCRIPTION.
+
+    """
     if dataset == "mnist":
         class_names = {
             0: "0", 1: "1", 2: "2", 3: "3", 4: "4",
@@ -325,10 +487,44 @@ def get_class_names(dataset, labels):
     return class_names_array
 
 
-def calculate_proj_scores(model_to_keep, dirname_figs, sigma=0.0,
-                          dim_method="tsne", datatype="fmnist",
-                          seq_tag="_sequential", learn_phase="trained",
-                          n_trials=5, rep=1):
+def calculate_proj_scores(
+        model_to_keep, dirname_figs, sigma=0.0,
+        dim_method="tsne", datatype="fmnist",
+        seq_tag="_sequential", learn_phase="trained",
+        n_trials=5, rep=1
+    ):
+    """
+    Calculate the score on the projected space.
+
+    Parameters
+    ----------
+    model_to_keep : TYPE
+        DESCRIPTION.
+    dirname_figs : TYPE
+        DESCRIPTION.
+    sigma : TYPE, optional
+        DESCRIPTION. The default is 0.0.
+    dim_method : TYPE, optional
+        DESCRIPTION. The default is "tsne".
+    datatype : TYPE, optional
+        DESCRIPTION. The default is "fmnist".
+    seq_tag : TYPE, optional
+        DESCRIPTION. The default is "_sequential".
+    learn_phase : TYPE, optional
+        DESCRIPTION. The default is "trained".
+    n_trials : TYPE, optional
+        DESCRIPTION. The default is 5.
+    rep : TYPE, optional
+        DESCRIPTION. The default is 1.
+
+    Returns
+    -------
+    df_scores : TYPE
+        DESCRIPTION.
+    embeddings : TYPE
+        DESCRIPTION.
+
+    """
     df_scores = pd.DataFrame()
     for model_name in model_to_keep:
         postfix = f"{dim_method}_{datatype}{seq_tag}_sigma_{sigma}_{learn_phase}_rep_{rep}"
@@ -357,8 +553,35 @@ def calculate_proj_scores(model_to_keep, dirname_figs, sigma=0.0,
     return df_scores, embeddings
 
 
-def draw_text_metrics(ax, xloc, yloc, metric, text,
-                      color='black', fontsize=9):
+def draw_text_metrics(
+        ax, xloc, yloc, metric, text,
+        color='black', fontsize=9
+    ):
+    """
+    Draw text on histograms.
+
+    Parameters
+    ----------
+    ax : TYPE
+        DESCRIPTION.
+    xloc : TYPE
+        DESCRIPTION.
+    yloc : TYPE
+        DESCRIPTION.
+    metric : TYPE
+        DESCRIPTION.
+    text : TYPE
+        DESCRIPTION.
+    color : TYPE, optional
+        DESCRIPTION. The default is 'black'.
+    fontsize : TYPE, optional
+        DESCRIPTION. The default is 9.
+
+    Returns
+    -------
+    None.
+
+    """
     ax.text(
         x=xloc,
         y=yloc,
@@ -374,7 +597,25 @@ def draw_text_metrics(ax, xloc, yloc, metric, text,
 
 
 def make_subplots(fig, fig_part, dataset="mnist", label="A"):
+    """
+    Draw subplots.
 
+    Parameters
+    ----------
+    fig : TYPE
+        DESCRIPTION.
+    fig_part : TYPE
+        DESCRIPTION.
+    dataset : TYPE, optional
+        DESCRIPTION. The default is "mnist".
+    label : TYPE, optional
+        DESCRIPTION. The default is "A".
+
+    Returns
+    -------
+    None.
+
+    """
     # Load the dataset
     data, labels, img_height, img_width, channels = get_data(
         validation_split=0.1,
@@ -428,7 +669,20 @@ def make_subplots(fig, fig_part, dataset="mnist", label="A"):
 
 
 def short_to_long_names(names):
+    """
+    Export the long names of the models.
 
+    Parameters
+    ----------
+    names : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    long_names : TYPE
+        DESCRIPTION.
+
+    """
     long_names = []
     for n in names:
         if n == "dANN-R":
@@ -459,6 +713,22 @@ def short_to_long_names(names):
 
 
 def calc_eff_scores(df, form='acc'):
+    """
+    Calculate the loss and accuracy efficiency scores.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        DESCRIPTION.
+    form : str, optional
+        DESCRIPTION. The default is 'acc'.
+
+    Returns
+    -------
+    df_out : TYPE
+        DESCRIPTION.
+
+    """
     df_out = pd.DataFrame()
     datasets = df["data"].unique()
     for d in datasets:
