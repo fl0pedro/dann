@@ -378,16 +378,13 @@ def make_masks(
                 opt=rfs_mode,
                 rfs_type=rfs_type,
                 prob=0.7,
-                num_channels=channels,
+                num_channels=channels if i == 0 else 1,
                 seed=seed
             )
         else:
             # if no RFs are enabled use random connectivity (like `sparse`)
             inputs_size = matrix.size
-            if i > 0:
-                factor = 1
-            else:
-                factor = channels
+            factor = channels if i == 0 else 1
 
             # for soma to the next dendrites (if more than two layers)
             Mask_s_d = random_connectivity(
@@ -849,7 +846,7 @@ def custom_train_loop_torch(
         x_train, y_train, x_val, y_val, x_test, y_test,
         shuffle=True, early_stop=False, patience=0, device='cpu'
     ):
-    
+
     import torch
     """
     Custom training loop for better handling and zeroing out gradients based
