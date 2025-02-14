@@ -183,7 +183,8 @@ def sequential_preprocess(
     input_train, target_train, batch_size,
     validation_split, seed=None):
     """
-    Appearance of the data in a sequential manner,
+    Appearance of the data in a sequential manner.
+
     e.g., class 1, ..., class 1, class 2, ...
 
     Parameters
@@ -263,29 +264,59 @@ def sequential_preprocess(
 
 
 def load_dataset(path_dataset):
+    """
+    Load a dataset from a binary file.
+
+    Parameters
+    ----------
+    path_dataset : str
+        The file path to the dataset.
+
+    Returns
+    -------
+    data : numpy.ndarray
+        A 3D array containing the dataset, reshaped to (size, nrows, ncols).
+
+    """
     with open(path_dataset,'rb') as f:
         magic, size = struct.unpack(">II", f.read(8))
         nrows, ncols = struct.unpack(">II", f.read(8))
-        data = np.frombuffer(f.read(),
-                             dtype=np.dtype(np.uint8).newbyteorder('>')
-                             )
+        data = np.frombuffer(
+            f.read(),
+            dtype=np.dtype(np.uint8).newbyteorder('>')
+        )
         data = data.reshape((size, nrows, ncols))
         return data
 
 
 def load_label(path_label):
+    """
+    Load labels from a binary file.
+
+    Parameters
+    ----------
+    path_label : str
+        The file path to the labels.
+
+    Returns
+    -------
+    label : numpy.ndarray
+       A 3D array containing the dataset, reshaped to (size, nrows, ncols).
+
+    """
     with open(path_label,'rb') as f:
         magic, size = struct.unpack('>II', f.read(8))
-        label = np.frombuffer(f.read(),
-                              dtype=np.dtype(np.uint8).newbyteorder('>')
-                              )
+        label = np.frombuffer(
+            f.read(),
+            dtype=np.dtype(np.uint8).newbyteorder('>')
+        )
         return label
 
 
 
 def perturb_array(arr, perturbation, amin=0, amax=1):
     """
-    Perturbation function that adds a given pertubation(s) to a given image(s)
+    Perturbation function that adds a given pertubation(s) to a given image(s).
 
     Parameters
     ----------
@@ -446,8 +477,32 @@ def make_masks(
     return Masks
 
 
-def get_model_name(conventional=False, rfs=False, sparse=False,
-                   rfs_type='somatic', input_sample=None):
+def get_model_name(
+        conventional=False, rfs=False, sparse=False,
+        rfs_type='somatic', input_sample=None):
+    """
+    Get the model's name in str format.
+
+    Parameters
+    ----------
+    conventional : boolean, optional
+        If the model is fully connected or not. The default is False.
+    rfs : boolean, optional
+        If the model used receptive field-like sampling. The default is False.
+    sparse : boolean, optional
+        If the model is randomly-sparsed. The default is False.
+    rfs_type : str, optional
+        The type of receptive fields, either 'dendritic' or 'somatic'.
+        The default is 'somatic'.
+    input_sample : str, optional
+        If the input is 'all-to-all'. The default is None.
+
+    Returns
+    -------
+    fname_model : str
+        The full name of the model.
+
+    """
     if not conventional:
         if not sparse:
             if rfs:
@@ -474,9 +529,10 @@ def get_model_name(conventional=False, rfs=False, sparse=False,
     return fname_model
 
 
-def get_model(input_shape, num_layers, dends, soma,
-              num_classes, fname_model, relu_slope=0.1,
-              dropout=False, rate=0.0):
+def get_model(
+        input_shape, num_layers, dends, soma,
+        num_classes, fname_model, relu_slope=0.1,
+        dropout=False, rate=0.0):
     """
     Buld the model.
 
@@ -599,11 +655,8 @@ def custom_train_loop(
         x_train, y_train, x_val, y_val, x_test, y_test,
         shuffle=True, early_stop=False, patience=0
     ):
-
-    import tensorflow as tf
     """
-    Custom training loop for better handling and zeroing out gradients based
-    on masks.
+    Create the custom training loop for better handling and zeroing out gradients based on masks.
 
     Parameters
     ----------
@@ -654,6 +707,7 @@ def custom_train_loop(
         The output data. Train loss and accuracy, Validation loss and accuracy
         per epoch, and test loss and accuracy.
     """
+    import tensorflow as tf
     # Prepare the metrics
     # Accuracy metrics
     train_acc_metric = keras.metrics.SparseCategoricalAccuracy()
@@ -846,11 +900,8 @@ def custom_train_loop_torch(
         x_train, y_train, x_val, y_val, x_test, y_test,
         shuffle=True, early_stop=False, patience=0, device='cpu'
     ):
-
-    import torch
     """
-    Custom training loop for better handling and zeroing out gradients based
-    on masks.
+    Create the custom training loop for better handling and zeroing out gradients based on masks.
 
     Parameters
     ----------
@@ -901,7 +952,7 @@ def custom_train_loop_torch(
         The output data. Train loss and accuracy, Validation loss and accuracy
         per epoch, and test loss and accuracy.
     """
-
+    import torch
     os.environ["KERAS_BACKEND"] = "torch"
 
     # Create torch Datasets
@@ -1088,12 +1139,8 @@ def custom_train_loop_jax(
         x_train, y_train, x_val, y_val, x_test, y_test,
         shuffle=True, early_stop=False, patience=0
     ):
-
-    import jax
-    import tensorflow as tf
     """
-    Custom training loop for better handling and zeroing out gradients based
-    on masks.
+    Create the custom training loop for better handling and zeroing out gradients based on masks.
 
     Parameters
     ----------
@@ -1139,6 +1186,9 @@ def custom_train_loop_jax(
         The output data. Train loss and accuracy, Validation loss and accuracy
         per epoch, and test loss and accuracy.
     """
+    import jax
+    import tensorflow as tf
+
     # Prepare the metrics.
     train_acc_metric = keras.metrics.SparseCategoricalAccuracy()
     val_acc_metric = keras.metrics.SparseCategoricalAccuracy()
