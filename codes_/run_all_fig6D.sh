@@ -16,7 +16,7 @@ for t in $(seq 1 5); do
     for d in 1 2 4 8 16 32 64; do
       for s in 32 64 128 256 512; do
         echo "Trial:" $t "Model:" $m "dends:" $d "soma:" $s
-        python main.py $GPU_ID $seq_flag $t $m $sigma $data $d $s $nl $nsyn $drop_flag $rate $lr $DIRPARAMS
+        uv run main.py $GPU_ID $seq_flag $t $m $sigma $data $d $s $nl $nsyn $drop_flag $rate $lr $DIRPARAMS
       done
     done
   done

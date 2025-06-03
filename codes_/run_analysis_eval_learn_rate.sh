@@ -9,5 +9,5 @@ data=fmnist # dataset
 es_flag=0 # early stop flag
 for lr in 0.01 0.0001; do
   echo "Dataset:" $data
-  python analysis_model_evaluation.py $DIRPARAMS $data $seq_flag $noise_flag $drop_flag $nl $lr $es_flag
+  uv run analysis_model_evaluation.py $DIRPARAMS $data $seq_flag $noise_flag $drop_flag $nl $lr $es_flag
 done

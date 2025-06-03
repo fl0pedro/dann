@@ -9,5 +9,5 @@ lr=0.001 # learning rate
 es_flag=0 # early stop flag
 for nl in 2 3; do
   echo "Number of layers:" $nl
-  python analysis_model_evaluation.py $DIRPARAMS $data $seq_flag $noise_flag $drop_flag $nl $lr $es_flag
+  uv run analysis_model_evaluation.py $DIRPARAMS $data $seq_flag $noise_flag $drop_flag $nl $lr $es_flag
 done

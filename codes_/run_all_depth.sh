@@ -16,7 +16,7 @@ for nl in 2 3; do
       for d in 8 16 32 64; do
         for s in 256 512; do
           echo "Trial:" $t "Model:" $m "dends:" $d "soma:" $s
-          python main.py $GPU_ID $seq_flag $estop_flag $t $m $sigma $data $d $s $nl $nsyn $drop_flag $rate $lr $DIRPARAMS
+          uv run main.py $GPU_ID $seq_flag $estop_flag $t $m $sigma $data $d $s $nl $nsyn $drop_flag $rate $lr $DIRPARAMS
         done
       done
     done
