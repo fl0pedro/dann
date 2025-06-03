@@ -1,7 +1,7 @@
 #!/bin/bash
 DIRPARAMS=$1
 echo $DIRPARAMS
-GPU_ID=0 # the GPU to be used
+GPU_ID=1 # the GPU to be used
 seq_flag=0 # sequnetial learning flag (no-sequential)
 estop_flag=0 # early stopping flag
 m=3 # set the model to vanilla_ann

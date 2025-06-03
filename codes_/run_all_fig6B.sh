@@ -1,6 +1,6 @@
 #!/bin/bash
 DIRPARAMS=$1
-GPU_ID=0 # the GPU to be used
+GPU_ID=1 # the GPU to be used
 seq_flag=0 # sequnetial learning flag (no-sequential)
 estop_flag=0 # early stopping flag
 data=fmnist # dataset to train on
