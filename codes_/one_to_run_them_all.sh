@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --array=0-15
+#SBATCH --array=0-8
 #SBATCH --output=slurm/%x_%j_$A.out 
 #SBATCH --error=slurm/%x_%j_$A.err 
 #SBATCH --gres=gpu:1
