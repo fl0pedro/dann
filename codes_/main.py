@@ -26,7 +26,7 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument("-d", "--num-dendrites", type=int, required=True)
 parser.add_argument("-s", "--num-somas", type=int, required=True)
-parser.add_argument("-o" "--output", action="store_true")
+parser.add_argument("-o", "--output", action="store_true")
 parser.add_argument("--gpu", action="store_true")
 parser.add_argument("--sequential", action="store_true")
 parser.add_argument("--early-stop", action="store_true")
@@ -44,6 +44,8 @@ parser.add_argument("--learning-rate", dest="lr", type=float, default=1e-3)
 parser.add_argument("--dataset", choices=["mnist", "fmnist", "kmnist", "emnist", "cifar10"], default="fmnist")
 
 args = parser.parse_args()
+
+print(args)
 
 os.environ["CUDA_VISIBLE_DEVICES"] = str(int(args.gpu))
 
@@ -104,7 +106,7 @@ y_train, y_val, y_test = labels["train"], labels["val"], labels["test"]
 # Model architectures
 num_classes = len(set(y_train))
 dends = args.num_layers*[args.num_dendrites]
-soma = args.num_layers*[args.num_soma]
+soma = args.num_layers*[args.num_somas]
 
 # Build the masks
 Masks = make_masks(
@@ -226,7 +228,7 @@ if args.output:
         os.mkdir(outdir_name)
 
     # Save the model
-    postfix = f"sigma_{args.sigma}_trial_{args.trial}_dends_{args.num_dends}_soma_{args.num_soma}"
+    postfix = f"sigma_{args.sigma}_trial_{args.trial}_dends_{args.num_dends}_soma_{args.num_somas}"
     print(f"Saving to: {outdir_name}/model_{postfix}.keras+pkl")
     # Save the untrained and trained model
     # model_untrained.save(pathlib.Path(f"{outdir_name}/untrained_model_{postfix}.h5"))
