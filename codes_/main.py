@@ -22,13 +22,10 @@ from opt import get_model_name
 
 import argparse
 
-parser = argparse.ArgumentParser(
-    prog="dendritic artificial neural network"
-)
+parser = argparse.ArgumentParser()
 
 parser.add_argument("-d", "--num-dendrites", type=int, required=True)
 parser.add_argument("-s", "--num-somas", type=int, required=True)
-parser.add_argument("-l", "--num-layers", type=int, required=True)
 parser.add_argument("-o","--output-file")
 parser.add_argument("--gpu", action="store_true")
 parser.add_argument("--sequential", action="store_true")
@@ -37,9 +34,10 @@ parser.add_argument("--all-to-all", action="store_true")
 parser.add_argument("--conventional", action="store_true")
 parser.add_argument("--sparse", action="store_true")
 parser.add_argument("--rfs", choices=["somatic", "dendritic"])
-parser.add_argument("--model", type=int, deprecated=True)
+parser.add_argument("--model", type=int) # deprecated
 parser.add_argument("--trial", type=int, default=0)
 parser.add_argument("--sigma", type=float, default=0.0)
+parser.add_argument("--num-layers", type=int, default=1)
 parser.add_argument("--num-synapses", dest="nsyn", type=int, default=16)
 parser.add_argument("--drop-rate", type=float, default=0)
 parser.add_argument("--learning-rate", dest="lr", type=float, default=1e-3)
