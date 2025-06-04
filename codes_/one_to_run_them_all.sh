@@ -14,7 +14,7 @@ for x in $(ls run*.sh); do
     base=$(basename "$x" .sh)
 
     echo "running $x..."
-    sh $x all_out 1> "$base.out" 2> "$base.err" &
+    sh $x all_out 1> "slurm/$base.out" 2> "slurm/$base.err" &
 done
 
 wait
