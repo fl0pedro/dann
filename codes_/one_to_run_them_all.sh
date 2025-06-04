@@ -1,6 +1,7 @@
 #!/bin/bash
-#SBATCH --output=slurm/%x_%j.out 
-#SBATCH --error=slurm/%x_%j.err 
+#SBATCH --array=0-15
+#SBATCH --output=slurm/%x_%j_$A.out 
+#SBATCH --error=slurm/%x_%j_$A.err 
 #SBATCH --gres=gpu:1
 #SBATCH --time=48:00:00 
 #SBATCH --nodelist=pgi15-cpu2
@@ -9,4 +10,7 @@
 #SBATCH --mail-user=f.assmuth@fz-juelich.de
 #SBATCH --job-name=dANN
 
-for x in $(ls run*.sh); do sh $x all_out; done
+SCRIPT=$(sed -n "$((SLURM_ARRAY_TASK_ID+1))p" joblist.txt)
+
+uv sync
+sh "$SCRIPT" all_out > /dev/null
