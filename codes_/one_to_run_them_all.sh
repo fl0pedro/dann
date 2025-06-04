@@ -8,4 +8,4 @@
 #SBATCH --mail-user=f.assmuth@fz-juelich.de
 #SBATCH --job-name=dANN
 
-for x in $(ls run*.sh); do sh x; end
+for x in $(ls run*.sh); do sh $x; done
