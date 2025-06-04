@@ -188,6 +188,7 @@ if save_data:
     else:
         fname_store = pathlib.Path(f"{dirname}/output_all_final.pkl")
 
+    os.makedirs(dirname, exist_ok=True)
     with open(f'{fname_store}', 'wb') as handle:
         pickle.dump(results, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
