@@ -7,7 +7,7 @@ for nl in 2 3; do
       for d in 8 16 32 64; do
         for s in 256 512; do
           echo "Trial:" $t "Model:" $m "dends:" $d "soma:" $s
-          uv run main.py --gpu --trial $t --model $m -d $d -s $s --num-layers $nl
+          uv run main.py --gpu --trial $t --model $m -d $d -s $s --num-layers $nl -o
         done
       done
     done

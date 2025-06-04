@@ -7,7 +7,7 @@ for data in mnist kmnist emnist cifar10; do
       for d in 1 2 4 8 16 32 64; do
         for s in 32 64 128 256 512; do
           echo "Trial:" $t "Model:" $m "dends:" $d "soma:" $s
-          uv run main.py --gpu --trial $t --model 3 --dataset $data --drop-rate $rate -d $d -s $s
+          uv run main.py --gpu --trial $t --model 3 --dataset $data --drop-rate $rate -d $d -s $s -o
         done
       done
     done

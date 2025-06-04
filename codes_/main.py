@@ -26,7 +26,7 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument("-d", "--num-dendrites", type=int, required=True)
 parser.add_argument("-s", "--num-somas", type=int, required=True)
-parser.add_argument("-o","--output-file")
+parser.add_argument("-o" "--output", action="store_true")
 parser.add_argument("--gpu", action="store_true")
 parser.add_argument("--sequential", action="store_true")
 parser.add_argument("--early-stop", action="store_true")
@@ -227,6 +227,7 @@ if args.output:
 
     # Save the model
     postfix = f"sigma_{args.sigma}_trial_{args.trial}_dends_{args.num_dends}_soma_{args.num_soma}"
+    print(f"Saving to: {outdir_name}/model_{postfix}.keras+pkl")
     # Save the untrained and trained model
     # model_untrained.save(pathlib.Path(f"{outdir_name}/untrained_model_{postfix}.h5"))
     model.save(pathlib.Path(f"{outdir_name}/model_{postfix}.keras"))
