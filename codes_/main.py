@@ -166,12 +166,11 @@ model.set_weights(PARAMSmod)
 model_untrained = copy.deepcopy(model)
 
 # Instantiate the optimizer and the loss function
-lr = float(sys.argv[14])
-optimizer = keras.optimizers.Adam(learning_rate=lr)
+optimizer = keras.optimizers.Adam(learning_rate=args.lr)
 loss_fn = keras.losses.SparseCategoricalCrossentropy(from_logits=False)
 
-if lr != 1e-3: # i.e., not default
-    file_tag += f"_lr_{lr}"
+if args.lr != 1e-3: # i.e., not default
+    file_tag += f"_lr_{args.lr}"
 
 match args.dataset:
     case "mnist":
@@ -212,13 +211,12 @@ out["masks"] = Masks
 
 if args.output:
     # the local directory to save the data
-    path_to_dir_local = sys.argv[15]
-    if not os.path.exists(path_to_dir_local):
-        os.mkdir(path_to_dir_local)
+    if not os.path.exists(args.output):
+        os.mkdir(args.output)
 
     # subdirectory with name of model, num of layers and other tags added
     sub_tag = f"results_{args.dataset}_{args.num_layers}_layer{file_tag}/"
-    dirname = pathlib.Path(f"{path_to_dir_local}/{sub_tag}")
+    dirname = pathlib.Path(f"{args.output}/{sub_tag}")
     if not os.path.exists(dirname):
         os.mkdir(dirname)
 
