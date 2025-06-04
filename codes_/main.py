@@ -38,7 +38,7 @@ parser.add_argument("--model", type=int) # deprecated
 parser.add_argument("--trial", type=int, default=0)
 parser.add_argument("--sigma", type=float, default=0.0)
 parser.add_argument("--num-layers", type=int, default=1)
-parser.add_argument("--num-synapses", dest="nsyn", type=int, default=16)
+parser.add_argument("--num-synapses", dest="nsyns", type=int, default=16)
 parser.add_argument("--drop-rate", type=float, default=0)
 parser.add_argument("--learning-rate", dest="lr", type=float, default=1e-3)
 parser.add_argument("--dataset", choices=["mnist", "fmnist", "kmnist", "emnist", "cifar10"], default="fmnist")
