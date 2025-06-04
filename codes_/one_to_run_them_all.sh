@@ -1,4 +1,12 @@
 #!/bin/bash
+#SBATCH --output=slurm/%x_%j.out 
+#SBATCH --error=slurm/%x_%j.err 
+#SBATCH --gres=gpu:4 
+#SBATCH --time=48:00:00 
+#SBATCH --nodes=1 
+#SBATCH --mail-type=END,FAIL 
+#SBATCH --mail-user=f.assmuth@fz-juelich.de
+
 srun run_all_depth_test.sh
 srun run_all_depth.sh
 srun run_all_drop.sh
