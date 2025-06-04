@@ -26,7 +26,7 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument("-d", "--num-dendrites", type=int, required=True)
 parser.add_argument("-s", "--num-somas", type=int, required=True)
-parser.add_argument("-o", "--output", action="store_true")
+parser.add_argument("-o", "--output")
 parser.add_argument("--gpu", action="store_true")
 parser.add_argument("--sequential", action="store_true")
 parser.add_argument("--early-stop", action="store_true")
