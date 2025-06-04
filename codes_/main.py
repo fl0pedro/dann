@@ -221,8 +221,7 @@ if args.output:
 
     # Create the output directory
     outdir_name = pathlib.Path(f"{dirname}/{fname_model}")
-    if not os.path.exists(outdir_name):
-        os.mkdir(outdir_name)
+    os.makedirs(outdir_name, exist_ok=True)
 
     # Save the model
     postfix = f"sigma_{args.sigma}_trial_{args.trial}_dends_{args.num_dendrites}_soma_{args.num_somas}"
