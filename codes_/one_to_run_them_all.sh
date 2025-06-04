@@ -6,7 +6,7 @@
 #SBATCH --nodes=1 
 #SBATCH --mail-type=END,FAIL 
 #SBATCH --mail-user=f.assmuth@fz-juelich.de
-#SBATCB --job-name=dANN
+#SBATCH --job-name=dANN
 
 srun run_all_depth_test.sh
 srun run_all_depth.sh
