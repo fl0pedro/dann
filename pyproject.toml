@@ -23,6 +23,7 @@ dependencies = [
     "optree",
     "palettable",
     "pooch",
+    "scikit-learn>=1.6.1",
     "seaborn",
     "seaborn-image",
     "tensorboard",
