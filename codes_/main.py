@@ -45,7 +45,7 @@ parser.add_argument("--dataset", choices=["mnist", "fmnist", "kmnist", "emnist",
 
 args = parser.parse_args()
 
-os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
+os.environ["CUDA_VISIBLE_DEVICES"] = str(int(args.gpu))
 
 keras.utils.set_random_seed(args.trial)
 
