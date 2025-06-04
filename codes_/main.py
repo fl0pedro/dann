@@ -20,157 +20,141 @@ from opt import get_model
 from opt import get_data
 from opt import get_model_name
 
-os.environ["CUDA_VISIBLE_DEVICES"] = sys.argv[1]
+import argparse
 
-# Run parameters
-save = True
-seq_flag = False if int(sys.argv[2]) == 0 else True
-noise = True
-early_stop = False if int(sys.argv[3]) == 0 else True
-trial = int(sys.argv[4])
-keras.utils.set_random_seed(trial)
+parser = argparse.ArgumentParser(
+    prog="dendritic artificial neural network"
+)
 
-rfs_type = 'somatic'
-model_type = int(sys.argv[5])
-sparse = False
-input_sample = None
-if model_type == 0:
-    # dendritic ANN (dANN) with random connections
-    conventional = False
-    rfs = False
-elif model_type == 1:
-    # dendritic ANN (dANN) with global RFs
-    conventional = False
-    rfs = True
-elif model_type == 2:
-    # dendritic ANN (dANN) with local RFs
-    conventional = False
-    rfs = True
-    rfs_type = 'dendritic'
-elif model_type == 3:
-    # vanilla ANN (vANN) all-to-all connections (no RFs)
-    conventional = True
-    rfs = False
-elif model_type == 4:
-    # vanilla ANN (vANN) with random connections
-    conventional = True
-    rfs = False
-    sparse = True
-elif model_type == 5:
-    # vanilla ANN (vANN) with global RFs
-    conventional = True
-    rfs = True
-elif model_type == 6:
-    # vanilla ANN (vANN) with local RFs
-    conventional = True
-    rfs = True
-    rfs_type = 'dendritic'
-elif model_type == 7:
-    # sparse ANN (sANN)
-    conventional = False
-    rfs = False
-    sparse = True
-elif model_type == 8:
-    # sparse ANN (sANN) with global RFs
-    conventional = False
-    rfs = True
-    sparse = True
-elif model_type == 9:
-    # sparse ANN (sANN) with local RFs
-    conventional = False
-    rfs = True
-    sparse = True
-    rfs_type = 'dendritic'
-elif model_type == 10:
-    # dendritic ANN (dANN) with all-to-all inputs
-    conventional = False
-    rfs = True
-    sparse = False
-    input_sample = 'all_to_all'
-elif model_type == 11:
-    # sparse ANN (sANN) with all-to-all inputs
-    conventional = False
-    rfs = True
-    sparse = True
-    input_sample = 'all_to_all'
+parser.add_argument("-d", "--num-dendrites", type=int, required=True)
+parser.add_argument("-s", "--num-somas", type=int, required=True)
+parser.add_argument("-l", "--num-layers", type=int, required=True)
+parser.add_argument("-o","--output-file")
+parser.add_argument("--gpu", action="store_true")
+parser.add_argument("--sequential", action="store_true")
+parser.add_argument("--early-stop", action="store_true")
+parser.add_argument("--all-to-all", action="store_true")
+parser.add_argument("--conventional", action="store_true")
+parser.add_argument("--sparse", action="store_true")
+parser.add_argument("--rfs", choices=["somatic", "dendritic"])
+parser.add_argument("--model", type=int, deprecated=True)
+parser.add_argument("--trial", type=int, default=0)
+parser.add_argument("--sigma", type=float, default=0.0)
+parser.add_argument("--num-synapses", dest="nsyn", type=int, default=16)
+parser.add_argument("--drop-rate", type=float, default=0)
+parser.add_argument("--learning-rate", dest="lr", type=float, default=1e-3)
+parser.add_argument("--dataset", choices=["mnist", "fmnist", "kmnist", "emnist", "cifar10"], default="fmnist")
 
-sigma = float(sys.argv[6])
+args = parser.parse_args()
+
+os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
+
+keras.utils.set_random_seed(args.trial)
+
+match args.model:
+    case 0: # dendritic ANN (dANN) with random connections
+        pass
+    case 1: # dendritic ANN (dANN) with global RFs
+        args.rfs = "somatic"
+    case 2: # dendritic ANN (dANN) with local RFs
+        args.rfs = "dendritic"
+    case 3: # vanilla ANN (vANN) all-to-all connections (no RFs)
+        args.conventional = True
+    case 4: # vanilla ANN (vANN) with random connections
+        args.conventional = True
+        args.sparse = True
+    case 5: # vanilla ANN (vANN) with global RFs
+        args.conventional = True
+        args.rfs = "somatic"
+    case 6: # vanilla ANN (vANN) with local RFs
+        args.conventional = True
+        args.rfs = "dendritic"
+    case 7: # sparse ANN (sANN)
+        args.sparse = True
+    case 8: # sparse ANN (sANN) with global RFs
+        args.rfs = "somatic"
+        args.sparse = True
+    case 9: # sparse ANN (sANN) with local RFs
+        args.rfs = "dendritic"
+        args.sparse = True
+    case 10: # dendritic ANN (dANN) with all-to-all inputs
+        args.rfs = "somatic"
+        args.all_to_all = True
+    case 11: # sparse ANN (sANN) with all-to-all inputs
+        args.conventional = False
+        args.rfs = "somatic"
+        args.sparse = True
+        args.all_to_all = True
+
 # Get the data
-datatype = sys.argv[7]
 batch_size = 128
 data, labels, img_height, img_width, channels = get_data(
     validation_split=0.1,
-    dtype=datatype,
+    dtype=args.dataset,
     normalize=True,
-    add_noise=noise,
-    sigma=sigma,
-    sequential=seq_flag,
+    add_noise=bool(args.sigma),
+    sigma=args.sigma,
+    sequential=args.sequential,
     batch_size=batch_size,
-    seed=trial,
+    seed=args.trial,
 )
 
 # Extract the data in train, validation, and test sets
-x_train, x_val, x_test = data['train'], data['val'], data['test']
-y_train, y_val, y_test = labels['train'], labels['val'], labels['test']
+x_train, x_val, x_test = data["train"], data["val"], data["test"]
+y_train, y_val, y_test = labels["train"], labels["val"], labels["test"]
 
 # Model architectures
-num_dends, num_soma = int(sys.argv[8]), int(sys.argv[9])
 num_classes = len(set(y_train))
-num_layers = int(sys.argv[10])
-dends = num_layers*[num_dends]
-soma = num_layers*[num_soma]
-synapses = int(sys.argv[11])
+dends = args.num_layers*[args.num_dendrites]
+soma = args.num_layers*[args.num_soma]
 
 # Build the masks
 Masks = make_masks(
     dends,
     soma,
-    synapses,
-    num_layers,
+    args.nsyns,
+    args.num_layers,
     img_width,
     img_height,
     num_classes,
     channels,
-    conventional=conventional,
-    rfs=rfs,
-    rfs_type=rfs_type,
-    rfs_mode='random',
-    seed=trial,
+    conventional=args.conventional,
+    rfs=args.rfs is not None,
+    rfs_type=args.rfs,
+    rfs_mode="random",
+    seed=args.trial,
 )
 
 # Get the model
 input_shape = (img_width * img_height * channels, )
 
 fname_model = get_model_name(
-    conventional,
-    rfs,
-    sparse,
-    rfs_type,
-    input_sample
+    args.conventional,
+    args.rfs is not None,
+    args.sparse,
+    args.rfs,
+    "all_to_all" if args.all_to_all else None
 )
 
-drop_flag = False if int(sys.argv[12]) == 0 else True
-rate_of_drop = float(sys.argv[13])
 # Set the foldername extension
-if seq_flag:
-    file_tag = "_sequential"
-else:
-    file_tag = ""
+file_tag = ""
+if args.sequential:
+    file_tag += "_sequential"
 
 # Change the model name if dropout
-if drop_flag:
-    fname_model += f"_dropout_{rate_of_drop}"
+if args.drop_rate:
+    fname_model += f"_dropout_{args.drop_rate}"
 
 # Get the model
 model = get_model(
     input_shape,
-    num_layers,
+    args.num_layers,
     dends,
     soma,
     num_classes,
     fname_model=fname_model,
-    dropout=drop_flag,
-    rate=rate_of_drop,
+    dropout=bool(args.drop_rate),
+    rate=args.drop_rate,
 )
 
 # Apply the masks to initial weights
@@ -186,26 +170,29 @@ lr = float(sys.argv[14])
 optimizer = keras.optimizers.Adam(learning_rate=lr)
 loss_fn = keras.losses.SparseCategoricalCrossentropy(from_logits=False)
 
-if lr != 0.001:
+if lr != 1e-3: # i.e., not default
     file_tag += f"_lr_{lr}"
 
-# Hyperparameters
-if datatype == 'mnist':
-    num_epochs = 15 if not seq_flag else 30
-elif datatype == 'fmnist':
-    num_epochs = 25 if not seq_flag else 50
-elif datatype == 'kmnist':
-    num_epochs = 25 if not seq_flag else 50
-elif datatype == 'emnist':
-    num_epochs = 50 if not seq_flag else 100
-elif datatype == 'cifar10':
-    num_epochs = 50 if not seq_flag else 100
+match args.dataset:
+    case "mnist":
+        num_epochs = 15
+    case "fmnist":
+        num_epochs = 25
+    case "kmnist":
+        num_epochs = 25
+    case "emnist":
+        num_epochs = 50
+    case "cifar10":
+        num_epochs = 50
 
-if early_stop:
+if args.sequential:
+    num_epochs *= 2
+
+if args.early_stop:
     num_epochs = 100
 
-print(f"\nModel: {fname_model}, trial: {trial}, layers: {num_layers}, "
-      f"noise: {sigma}, dataset: {datatype}, tag: {file_tag}\n")
+print(f"\nModel: {fname_model}, trial: {args.trial}, layers: {args.num_layers}, "
+      f"noise: {args.sigma}, dataset: {args.dataset}, tag: {file_tag}\n")
 
 # train and evaluate the model
 model, out = custom_train_loop(
@@ -215,23 +202,23 @@ model, out = custom_train_loop(
     x_train, y_train,
     x_val, y_val,
     x_test, y_test,
-    shuffle=False if seq_flag else True,
-    early_stop=early_stop,
+    shuffle=not args.sequential,
+    early_stop=args.early_stop,
     patience=10,
 )
 
 # Store masks in the output dictionary
-out['Masks'] = Masks
+out["masks"] = Masks
 
-if save:
+if args.output:
     # the local directory to save the data
     path_to_dir_local = sys.argv[15]
     if not os.path.exists(path_to_dir_local):
         os.mkdir(path_to_dir_local)
 
     # subdirectory with name of model, num of layers and other tags added
-    sub_tag = f"results_{datatype}_{num_layers}_layer{file_tag}/"
-    dirname = pathlib.Path(f'{path_to_dir_local}/{sub_tag}')
+    sub_tag = f"results_{args.dataset}_{args.num_layers}_layer{file_tag}/"
+    dirname = pathlib.Path(f"{path_to_dir_local}/{sub_tag}")
     if not os.path.exists(dirname):
         os.mkdir(dirname)
 
@@ -241,14 +228,14 @@ if save:
         os.mkdir(outdir_name)
 
     # Save the model
-    postfix = f"sigma_{sigma}_trial_{trial}_dends_{num_dends}_soma_{num_soma}"
+    postfix = f"sigma_{args.sigma}_trial_{args.trial}_dends_{args.num_dends}_soma_{args.num_soma}"
     # Save the untrained and trained model
     # model_untrained.save(pathlib.Path(f"{outdir_name}/untrained_model_{postfix}.h5"))
     model.save(pathlib.Path(f"{outdir_name}/model_{postfix}.keras"))
 
     # Save the results
     fname_res = pathlib.Path(f"{outdir_name}/results_{postfix}.pkl")
-    with open(fname_res, 'wb') as handle:
+    with open(fname_res, "wb") as handle:
         pickle.dump(out, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     print(f"\nResults have been saved in: {dirname}/{fname_model}")
