@@ -11,7 +11,7 @@
 
 uv sync
 for x in $(ls run*.sh); do 
-    base=$(basename "$script" .sh)
+    base=$(basename "$x" .sh)
 
     echo "running $base..."
     sh $x all_out 1> "$base.out" 2> "$base.err" &
