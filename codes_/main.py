@@ -226,7 +226,7 @@ if args.output:
         os.mkdir(outdir_name)
 
     # Save the model
-    postfix = f"sigma_{args.sigma}_trial_{args.trial}_dends_{args.num_dends}_soma_{args.num_somas}"
+    postfix = f"sigma_{args.sigma}_trial_{args.trial}_dends_{args.num_dendrites}_soma_{args.num_somas}"
     print(f"Saving to: {outdir_name}/model_{postfix}.keras+pkl")
     # Save the untrained and trained model
     # model_untrained.save(pathlib.Path(f"{outdir_name}/untrained_model_{postfix}.h5"))
