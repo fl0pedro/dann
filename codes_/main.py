@@ -217,8 +217,7 @@ if args.output:
     # subdirectory with name of model, num of layers and other tags added
     sub_tag = f"results_{args.dataset}_{args.num_layers}_layer{file_tag}/"
     dirname = pathlib.Path(f"{args.output}/{sub_tag}")
-    if not os.path.exists(dirname):
-        os.mkdir(dirname)
+    os.makedirs(dirname, exist_ok=True)
 
     # Create the output directory
     outdir_name = pathlib.Path(f"{dirname}/{fname_model}")

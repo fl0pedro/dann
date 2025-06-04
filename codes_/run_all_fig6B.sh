@@ -1,5 +1,6 @@
 #!/bin/bash
-DIRPARAMS=$1
+DIR=$1
+echo $DIR
 for sigma in 0.25 0.5 0.75 1.0; do
   for t in $(seq 1 5); do
     for m in 10 11; do #$(seq 0 11); do
