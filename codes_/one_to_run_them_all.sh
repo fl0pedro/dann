@@ -9,7 +9,7 @@
 #SBATCH --mail-user=f.assmuth@fz-juelich.de
 #SBATCH --job-name=dANN
 
-MAX_JOBS=1000
+MAX_JOBS=$(nproc)
 TOTAL_JOBS=0
 COMPLETED_JOBS=0
 DIR=slurm
