@@ -8,8 +8,8 @@
 #SBATCH --mail-user=f.assmuth@fz-juelich.de
 #SBATCH --job-name=dANN
 
-MAX_JOBS = 4
-JOBS = 0
+MAX_JOBS=4
+JOBS=0
 for x in $(ls run*.sh); do 
   DIR=$(basename $x) 
   sh $x "all_out/$DIR" 1>slurm/$DIR.out 2>slurm/$DIR.err &
