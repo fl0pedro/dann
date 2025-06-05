@@ -8,4 +8,5 @@
 #SBATCH --mail-user=f.assmuth@fz-juelich.de
 #SBATCH --job-name=dANN
 
+cd /Users/assmuth/dsnn/external/dANN
 for x in $(ls run*.sh); do sh $x "all_out/$(basename $x)"; done
