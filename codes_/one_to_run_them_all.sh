@@ -8,4 +8,5 @@
 #SBATCH --mail-user=f.assmuth@fz-juelich.de
 #SBATCH --job-name=dANN
 
+python3 -c "from jax.lib import xla_bridge; print(xla_bridge.get_backend().platform)"
 for x in $(ls run*.sh); do sh $x "all_out/$(basename $x)"; done
