@@ -29,12 +29,13 @@ parser.add_argument("--num-synapses", dest="nsyns", type=int, default=16)
 parser.add_argument("--drop-rate", type=float, default=0)
 parser.add_argument("--learning-rate", dest="lr", type=float, default=1e-3)
 parser.add_argument("--dataset", choices=["mnist", "fmnist", "kmnist", "emnist", "cifar10"], default="fmnist")
+parser.add_argument("--backend", choices=["tensorflow", "torch", "jax"])
 
 args = parser.parse_args()
 
 print(args)
 
-os.environ["KERAS_BACKEND"] = "tensorflow"
+os.environ["KERAS_BACKEND"] = args.backend
 os.environ["CUDA_VISIBLE_DEVICES"] = str(int(args.gpu))
 
 import copy
