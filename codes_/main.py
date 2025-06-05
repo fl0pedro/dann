@@ -191,7 +191,7 @@ if args.sequential:
 if args.early_stop:
     num_epochs = 100
 
-custom_train_loop = getattr(locals(), f"custom_train_loop_{args.backend}")
+custom_train_loop = locals()[f"custom_train_loop_{args.backend}"]
 
 model, out = custom_train_loop(
     model, loss_fn, optimizer,
