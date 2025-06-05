@@ -650,7 +650,7 @@ def get_model(
     return model
 
 
-def custom_train_loop(
+def custom_train_loop_tensorflow(
         model, loss_fn, optimizer, Masks, batch_size, num_epochs,
         x_train, y_train, x_val, y_val, x_test, y_test,
         shuffle=True, early_stop=False, patience=0

@@ -43,7 +43,10 @@ import keras
 import pickle
 import pathlib
 
-from opt import make_masks, custom_train_loop, get_model, get_data, get_model_name
+from opt import (
+    custom_train_loop_tensorflow, custom_train_loop_torch, custom_train_loop_jax, 
+    make_masks, get_model, get_data, get_model_name
+)
 
 run_tag = ""
 if args.sequential:
@@ -188,6 +191,7 @@ if args.sequential:
 if args.early_stop:
     num_epochs = 100
 
+custom_train_loop = getattr(locals(), f"custom_train_loop_{args.backend}")
 
 model, out = custom_train_loop(
     model, loss_fn, optimizer,
