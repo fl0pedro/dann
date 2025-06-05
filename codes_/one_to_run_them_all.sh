@@ -12,7 +12,7 @@
 MAX_JOBS=$(nproc)
 TOTAL_JOBS=0
 COMPLETED_JOBS=0
-DIR=$1
+DIR=all_out_2
 
 run_job() {
   local args="$1"
