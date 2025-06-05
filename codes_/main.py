@@ -72,9 +72,9 @@ if args.dirname:
     fulldir = pathlib.Path(args.dirname, subdirname, fname_model)
 
     postfix = f"sigma_{args.sigma}_trial_{args.trial}_dends_{args.num_dendrites}_soma_{args.num_somas}"
-
-    if fulldir.exists() and not args.force:
-        print(f"This run has already been recorded: {fulldir}")
+    
+    if (fulldir / f"results_{postfix}.pkl").exists() and not args.force:
+        print(f"This run has already been recorded: {fulldir}/results_{postfix}.pkl")
         exit(0)
 
 
