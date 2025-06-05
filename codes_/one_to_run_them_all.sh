@@ -18,10 +18,10 @@ run_job() {
   local args="$1"
   local name="$2"
   ((TOTAL_JOBS++))
-  (
+  {
     uv run main.py $args > "$DIR/${name}.out" 2> "$DIR/${name}.err"
     ((COMPLETED_JOBS++))
-  ) &
+  } &
 }
 
 wait_for_slot() {
