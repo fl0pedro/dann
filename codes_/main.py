@@ -74,7 +74,7 @@ if args.dirname:
     postfix = f"sigma_{args.sigma}_trial_{args.trial}_dends_{args.num_dendrites}_soma_{args.num_somas}"
 
     if fulldir.exists() and not args.force:
-        print("This run has already been recorded")
+        print(f"This run has already been recorded: {fulldir}")
         exit(0)
 
 
