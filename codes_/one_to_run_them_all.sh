@@ -8,5 +8,13 @@
 #SBATCH --mail-user=f.assmuth@fz-juelich.de
 #SBATCH --job-name=dANN
 
-uv run python3 -c "from jax.lib import xla_bridge; print(xla_bridge.get_backend().platform)"
-for x in $(ls run*.sh); do sh $x "all_out/$(basename $x)"; done
+MAX_JOBS = 4
+JOBS = 0
+for x in $(ls run*.sh); do 
+  DIR=$(basename $x) 
+  sh $x "all_out/$DIR" 1>slurm/$DIR.out 2>slurm/$DIR.err &
+  ((JOBS++))
+  if (( JOBS % MAX_JOBS == 0 )); then
+    wait
+  fi
+done
