@@ -17,15 +17,14 @@ from utils import num_trainable_params, get_power_of_10
 
 def parse_args(args: list[str] | None = None):
     parser = argparse.ArgumentParser()
-    parser.add_argument("dir_full_path", type=str)
-    parser.add_argument("datatype", choices=["mnist", "fmnist", "kmnist", "emnist", "cifar10"])
+    parser.add_argument("-o", "--output", dest="dirname")
     parser.add_argument("--sequential", action="store_true")
+    parser.add_argument("--early-stop", action="store_true")
     parser.add_argument("--noise", action="store_true")
     parser.add_argument("--dropout", action="store_true")
-    parser.add_argument("--num-layers", type=int, required=True)
-    parser.add_argument("--learning-rate", type=float, default=1e-3)
-    parser.add_argument("--early-stop", action="store_true")
-    parser.add_argument("--save", action="store_true", default=True)
+    parser.add_argument("--num-layers", type=int, default=1)
+    parser.add_argument("--learning-rate", dest="lr", type=float, default=1e-3)
+    parser.add_argument("--dataset", choices=["mnist", "fmnist", "kmnist", "emnist", "cifar10"], default="fmnist")
     return parser.parse_args(args)
 
 def main(*args):
@@ -66,7 +65,8 @@ def main(*args):
         num_epochs = 100
 
     df_all, df_test = pd.DataFrame(), pd.DataFrame()
-    dirname = pathlib.Path(args.dir_full_path, f"results_{args.datatype}_{args.num_layers}_layer{tag}")
+    
+    dirname = pathlib.Path(args.dirname, f"results_{args.datatype}_{args.num_layers}_layer{tag}")
 
     for model_type, sigma, num_soma, num_dends, t in product(models, sigmas, somata, dendrites, trials):
         fname = dirname / model_type / f"results_sigma_{sigma}_trial_{t}_dends_{num_dends}_soma_{num_soma}.pkl"
@@ -111,7 +111,7 @@ def main(*args):
 
         df_test = df_test.append(pd.DataFrame([df_test_entry]), ignore_index=True)
 
-    if args.save:
+    if args.dirname:
         results = {"training": df_all, "testing": df_test}
         
         if args.noise and not args.dropout:
