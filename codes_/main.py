@@ -9,6 +9,7 @@ import argparse
 import pathlib
 import pickle
 import copy
+from functools import cache
 
 def parse_args(args: list[str] | None = None):
     parser = argparse.ArgumentParser()
@@ -34,18 +35,42 @@ def parse_args(args: list[str] | None = None):
     parser.add_argument("--backend", choices=["tensorflow", "torch", "jax"], default="jax")
     return parser.parse_args(args)
 
+from collections import namedtuple
+
+@cache
+def init(backend: str, gpu: bool):
+    os.environ["KERAS_BACKEND"] = backend
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(int(gpu))
+
+    import keras
+    from opt import (
+        custom_train_loop_tensorflow, custom_train_loop_torch, custom_train_loop_jax,
+        make_masks, get_model, get_data, get_model_name
+    )
+
+    BackendContext = namedtuple("BackendContext", [
+        "keras", "train_loops", "make_masks", "get_model", "get_data", "get_model_name"
+    ])
+
+    return BackendContext(
+        keras=keras,
+        train_loops={
+            "tensorflow": custom_train_loop_tensorflow,
+            "torch": custom_train_loop_torch,
+            "jax": custom_train_loop_jax,
+        },
+        make_masks=make_masks,
+        get_model=get_model,
+        get_data=get_data,
+        get_model_name=get_model_name
+    )
+
+
 def main(*args):
     args = parse_args(args)
     print(args)
 
-    os.environ["KERAS_BACKEND"] = args.backend
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(int(args.gpu))
-
-    import keras
-    from opt import (
-        custom_train_loop_tensorflow, custom_train_loop_torch, custom_train_loop_jax, 
-        make_masks, get_model, get_data, get_model_name
-    )
+    backend = init(args.backend, args.gpu)
 
     run_tag = ""
     if args.sequential:
@@ -53,7 +78,7 @@ def main(*args):
     if args.lr != 1e-3:
         run_tag += f"_lr_{args.lr}"
 
-    fname_model = get_model_name(
+    fname_model = backend.get_model_name(
         args.conventional,
         args.rfs is not None,
         args.sparse,
@@ -77,12 +102,12 @@ def main(*args):
             print(f"This run has already been recorded: {result_file}")
             return
 
-    keras.utils.set_random_seed(args.trial)
+    backend.keras.utils.set_random_seed(args.trial)
 
     update_model_config(args)
 
     batch_size = 128
-    data, labels, img_height, img_width, channels = get_data(
+    data, labels, img_height, img_width, channels = backend.get_data(
         validation_split=0.1,
         dtype=args.dataset,
         normalize=True,
@@ -101,12 +126,12 @@ def main(*args):
     soma = args.num_layers * [args.num_somas]
 
     input_shape = (img_width * img_height * channels,)
-    model = get_model(
+    model = backend.get_model(
         input_shape, args.num_layers, dends, soma, num_classes,
         fname_model=fname_model, dropout=bool(args.drop_rate), rate=args.drop_rate,
     )
 
-    masks = make_masks(
+    masks = backend.make_masks(
         dends, soma, args.nsyns, args.num_layers,
         img_width, img_height, num_classes, channels,
         conventional=args.conventional,
@@ -120,8 +145,8 @@ def main(*args):
     model.set_weights([p * m for p, m in zip(params, masks)])
     model_untrained = copy.deepcopy(model)
 
-    optimizer = keras.optimizers.Adam(learning_rate=args.lr)
-    loss_fn = keras.losses.SparseCategoricalCrossentropy(from_logits=False)
+    optimizer = backend.keras.optimizers.Adam(learning_rate=args.lr)
+    loss_fn = backend.keras.losses.SparseCategoricalCrossentropy(from_logits=False)
 
     num_epochs = {
         "mnist": 15,
@@ -135,12 +160,7 @@ def main(*args):
     if args.early_stop:
         num_epochs = 100
 
-    backend_map = {
-        "jax": custom_train_loop_jax,
-        "tensorflow": custom_train_loop_tensorflow,
-        "torch": custom_train_loop_torch,
-    }
-    train_fn = backend_map[args.backend]
+    train_fn = backend.train_loops[args.backend]
 
     model, out = train_fn(
         model, loss_fn, optimizer, masks, batch_size, num_epochs,
