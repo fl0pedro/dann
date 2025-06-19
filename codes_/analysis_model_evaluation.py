@@ -18,6 +18,7 @@ from utils import num_trainable_params, get_power_of_10
 def parse_args(args: list[str] | None = None):
     parser = argparse.ArgumentParser()
     parser.add_argument("-o", "--output", dest="dirname")
+    parser.add_argument("--gpu", action="store_const", const="1", default="0")
     parser.add_argument("--sequential", action="store_true")
     parser.add_argument("--early-stop", action="store_true")
     parser.add_argument("--noise", action="store_true")
@@ -30,6 +31,9 @@ def parse_args(args: list[str] | None = None):
 def main(*args):
     args = parse_args(args)
     print(args)
+
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
+    
     t1 = time.time()
 
     if not args.dropout:
