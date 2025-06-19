@@ -11,7 +11,7 @@ file = "job_args.txt"
 def run_main_calls(output_dir, max_workers=4):
     jobs = []
     if os.path.exists('main_' + file):
-        with open('main_' + file, 'r') as f:
+        with open('main_' + file, 'rb') as f:
             jobs.extend([l.split() for l in f.readlines()])
     else:
         all_data = ["mnist", "fmnist", "kmnist", "emnist", "cifar10"]
@@ -54,7 +54,7 @@ def run_main_calls(output_dir, max_workers=4):
                 args = f"--trial {t} --model {m} --dataset cifar10 --learning-rate {lr} -d {d} -s {s} -o {output_dir}".split()
                 jobs.append(args)
         
-        with open('main_' + file, 'w') as f:
+        with open('main_' + file, 'wb') as f:
             f.writelines([' '.join(j) for j in jobs])
 
     # Parallel execution
@@ -67,7 +67,7 @@ def run_main_calls(output_dir, max_workers=4):
 def run_analysis_calls(output_dir, max_workers=4):
     jobs = []
     if os.path.exists('analysis_' + file):
-        with open('analysis_' + file, 'r') as f:
+        with open('analysis_' + file, 'rb') as f:
             jobs.extend([l.split() for l in f.readlines()])
     else:
         all_data = ["mnist", "fmnist", "kmnist", "emnist", "cifar10"]
@@ -88,7 +88,7 @@ def run_analysis_calls(output_dir, max_workers=4):
             args = f"--dataset {data} -o {output_dir}".split()
             jobs.append(args)
 
-        with open('analysis_' + file, 'w') as f:
+        with open('analysis_' + file, 'wb') as f:
             f.writelines([' '.join(j) for j in jobs])
             
     # Parallel execution
