@@ -89,7 +89,6 @@ def run_analysis_calls(output_dir, max_workers=4):
             jobs.append(args)
 
         with open('analysis_' + file, 'w') as f:
-            print(jobs)
             f.writelines([' '.join(j) for j in jobs])
             
     # Parallel execution
