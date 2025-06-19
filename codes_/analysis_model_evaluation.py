@@ -19,6 +19,7 @@ def parse_args(args: list[str] | None = None):
     parser = argparse.ArgumentParser()
     parser.add_argument("-o", "--output", dest="dirname")
     parser.add_argument("--gpu", action="store_const", const="1", default="")
+    parser.add_argument("--force", action="store_true")
     parser.add_argument("--sequential", action="store_true")
     parser.add_argument("--early-stop", action="store_true")
     parser.add_argument("--noise", action="store_true")
@@ -74,7 +75,7 @@ def main(*args):
 
     for model_type, sigma, num_soma, num_dends, t in product(models, sigmas, somata, dendrites, trials):
         fname = dirname / model_type / f"results_sigma_{sigma}_trial_{t}_dends_{num_dends}_soma_{num_soma}.pkl"
-        if not fname.is_file():
+        if not fname.exists() and not args.force():
             continue
 
         with open(fname, "rb") as f:
