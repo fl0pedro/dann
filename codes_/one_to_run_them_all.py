@@ -12,7 +12,7 @@ def run_main_calls(output_dir, max_workers=4):
     jobs = []
     if os.path.exists('main_' + file):
         with open('main_' + file, 'r') as f:
-            jobs.extend(f.readlines())
+            jobs.extend([l.split() for l in f.readlines()])
     else:
         all_data = ["mnist", "fmnist", "kmnist", "emnist", "cifar10"]
 
@@ -55,8 +55,7 @@ def run_main_calls(output_dir, max_workers=4):
                 jobs.append(args)
         
         with open('main_' + file, 'w') as f:
-            print(jobs)
-            f.writelines(jobs)
+            f.writelines([' '.join(j) for j in jobs])
 
     # Parallel execution
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
@@ -69,7 +68,7 @@ def run_analysis_calls(output_dir, max_workers=4):
     jobs = []
     if os.path.exists('analysis_' + file):
         with open('analysis_' + file, 'r') as f:
-            jobs.extend(f.readlines())
+            jobs.extend([l.split() for l in f.readlines()])
     else:
         all_data = ["mnist", "fmnist", "kmnist", "emnist", "cifar10"]
 
@@ -91,7 +90,7 @@ def run_analysis_calls(output_dir, max_workers=4):
 
         with open('analysis_' + file, 'w') as f:
             print(jobs)
-            f.writelines(jobs)
+            f.writelines([' '.join(j) for j in jobs])
             
     # Parallel execution
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
