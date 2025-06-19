@@ -6,12 +6,12 @@ import analysis_model_evaluation as analyze
 import argparse
 import os
 
-file = "job_args.txt"
+job_file = "job_args.txt"
 
 def run_main_calls(output_dir, max_workers=4):
     jobs = []
-    if os.path.exists('main_' + file):
-        with open('main_' + file, 'r') as f:
+    if os.path.exists('main_' + job_file):
+        with open('main_' + job_file, 'r') as f:
             jobs.extend([l.split() for l in f.readlines()])
     else:
         all_data = ["mnist", "fmnist", "kmnist", "emnist", "cifar10"]
@@ -54,7 +54,7 @@ def run_main_calls(output_dir, max_workers=4):
                 args = f"--trial {t} --model {m} --dataset cifar10 --learning-rate {lr} -d {d} -s {s} -o {output_dir}".split()
                 jobs.append(args)
         
-        with open('main_' + file, 'w') as f:
+        with open('main_' + job_file, 'w') as f:
             f.writelines([' '.join(j) for j in jobs])
 
     # Parallel execution
@@ -62,13 +62,13 @@ def run_main_calls(output_dir, max_workers=4):
         print(*jobs, sep='\n')
         list(tqdm(executor.map(run_model.main, jobs), total=len(jobs), desc="Running models"))
     
-    # os.remove(file)
+    # os.remove(job_file)
 
 
 def run_analysis_calls(output_dir, max_workers=4):
     jobs = []
-    if os.path.exists('analysis_' + file):
-        with open('analysis_' + file, 'r') as f:
+    if os.path.exists('analysis_' + job_file):
+        with open('analysis_' + job_file, 'r') as f:
             jobs.extend([l.split() for l in f.readlines()])
     else:
         all_data = ["mnist", "fmnist", "kmnist", "emnist", "cifar10"]
@@ -89,7 +89,7 @@ def run_analysis_calls(output_dir, max_workers=4):
             args = f"--dataset {data} -o {output_dir}".split()
             jobs.append(args)
 
-        with open('analysis_' + file, 'w') as f:
+        with open('analysis_' + job_file, 'w') as f:
             f.writelines([' '.join(j) for j in jobs])
             
     # Parallel execution
@@ -97,7 +97,7 @@ def run_analysis_calls(output_dir, max_workers=4):
         print(*jobs, sep='\n')
         list(tqdm(executor.map(analyze.main, jobs), total=len(jobs), desc="Running analysis"))
     
-    # os.remove(file)
+    # os.remove(job_file)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

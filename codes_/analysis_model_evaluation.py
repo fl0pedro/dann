@@ -29,7 +29,7 @@ def parse_args(args: list[str] | None = None):
     parser.add_argument("--dataset", choices=["mnist", "fmnist", "kmnist", "emnist", "cifar10"], default="fmnist")
     return parser.parse_args(args)
 
-def main(*args):
+def main(args: list[str] | None = None):
     args = parse_args(args)
     print(args)
 
