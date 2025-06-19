@@ -55,6 +55,7 @@ def run_main_calls(output_dir, max_workers=4):
                 jobs.append(args)
         
         with open(file, 'w') as f:
+            print(jobs)
             f.writelines(jobs)
 
     # Parallel execution
@@ -89,6 +90,7 @@ def run_analysis_calls(output_dir, max_workers=4):
             jobs.append(args)
 
         with open(file, 'w') as f:
+            print(jobs)
             f.writelines(jobs)
             
     # Parallel execution
