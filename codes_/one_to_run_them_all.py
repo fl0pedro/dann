@@ -59,6 +59,7 @@ def run_main_calls(output_dir, max_workers=4):
 
     # Parallel execution
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
+        print(*jobs, sep='\n')
         list(tqdm(executor.map(run_model.main, jobs), total=len(jobs), desc="Running models"))
     
     # os.remove(file)
@@ -93,6 +94,7 @@ def run_analysis_calls(output_dir, max_workers=4):
             
     # Parallel execution
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
+        print(*jobs, sep='\n')
         list(tqdm(executor.map(analyze.main, jobs), total=len(jobs), desc="Running analysis"))
     
     # os.remove(file)
