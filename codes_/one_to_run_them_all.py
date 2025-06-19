@@ -10,8 +10,8 @@ file = "job_args.txt"
 
 def run_main_calls(output_dir, max_workers=4):
     jobs = []
-    if os.path.exists(file):
-        with open(file, 'r') as f:
+    if os.path.exists('main_' + file):
+        with open('main_' + file, 'r') as f:
             jobs.extend(f.readlines())
     else:
         all_data = ["mnist", "fmnist", "kmnist", "emnist", "cifar10"]
@@ -54,7 +54,7 @@ def run_main_calls(output_dir, max_workers=4):
                 args = f"--trial {t} --model {m} --dataset cifar10 --learning-rate {lr} -d {d} -s {s} -o {output_dir}".split()
                 jobs.append(args)
         
-        with open(file, 'w') as f:
+        with open('main_' + file, 'w') as f:
             print(jobs)
             f.writelines(jobs)
 
@@ -62,13 +62,13 @@ def run_main_calls(output_dir, max_workers=4):
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         list(tqdm(executor.map(run_model.main, jobs), total=len(jobs), desc="Running models"))
     
-    os.remove(file)
+    # os.remove(file)
 
 
 def run_analysis_calls(output_dir, max_workers=4):
     jobs = []
-    if os.path.exists(file):
-        with open(file, 'r') as f:
+    if os.path.exists('analysis_' + file):
+        with open('analysis_' + file, 'r') as f:
             jobs.extend(f.readlines())
     else:
         all_data = ["mnist", "fmnist", "kmnist", "emnist", "cifar10"]
@@ -89,7 +89,7 @@ def run_analysis_calls(output_dir, max_workers=4):
             args = f"--dataset {data} -o {output_dir}".split()
             jobs.append(args)
 
-        with open(file, 'w') as f:
+        with open('analysis_' + file, 'w') as f:
             print(jobs)
             f.writelines(jobs)
             
@@ -97,7 +97,7 @@ def run_analysis_calls(output_dir, max_workers=4):
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         list(tqdm(executor.map(analyze.main, jobs), total=len(jobs), desc="Running analysis"))
     
-    os.remove(file)
+    # os.remove(file)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
