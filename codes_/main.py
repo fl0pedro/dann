@@ -16,7 +16,7 @@ def parse_args(args: list[str] | None = None):
     parser.add_argument("-d", "--num-dendrites", type=int, required=True)
     parser.add_argument("-s", "--num-somas", type=int, required=True)
     parser.add_argument("-o", "--output", dest="dirname")
-    parser.add_argument("--gpu", action="store_const", const="1", default="0")
+    parser.add_argument("--gpu", action="store_const", const="1", default="")
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--sequential", action="store_true")
     parser.add_argument("--early-stop", action="store_true")
