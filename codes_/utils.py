@@ -6,13 +6,19 @@ Created on Wed Dec  6 11:56:21 2023
 @author: spiros
 """
 import numpy as np
+import os
 
-import cuml
-from cuml.manifold import TSNE, UMAP
-from cuml.neighbors import NearestNeighbors
-from cuml.common.device_selection import set_global_device_type
+if os.environ.get("CUDA_VISIBLE_DEVICES", "0") == "1":
+    from cuml import set_global_output_type
+    # from cuml.manifold import TSNE, UMAP
+    from cuml.neighbors import NearestNeighbors
 
-from sklearn.decomposition import PCA
+    set_global_output_type('numpy')
+else:
+    # from sklearn.manifold import TSNE, UMAP
+    from sklearn.neighbors import NearestNeighbors
+
+# from sklearn.decomposition import PCA
 
 
 def calculate_sparsity(arr, threshold=0):
@@ -183,34 +189,33 @@ def information_metrics(activation_arr, true_labels, theta=0,):
     return entropy, sparsity, inactive_nodes, selectivity
 
 
-def _dim_reduction(arr, k=2, method='umap',
-                   pca_preprocess=False,
-                   device='gpu', seed=None):
-    # Perform t-SNE visualization
-    set_global_device_type(device)
-    cuml.set_global_output_type('numpy')
-    if method == 'tsne':
-        model = TSNE(
-            n_components=k,
-            perplexity=50.0,
-            n_neighbors=3*50.0,
-            random_state=seed)
-    elif method == 'umap':
-        model = UMAP(
-            n_components=k,
-            min_dist=0.0,
-            n_neighbors=30,
-            random_state=seed)
-    elif method == 'pca':
-        model = PCA(
-            n_components=k
-            )
-    if pca_preprocess:
-        # dim reduction
-        pca_model = PCA(n_components=50)
-        arr = pca_model.fit_transform(arr)
-    model_result = model.fit_transform(arr)
-    return model_result
+# def _dim_reduction(arr, k=2, method='umap',
+#                    pca_preprocess=False,
+#                    device='gpu', seed=None):
+#     # Perform t-SNE visualization
+#     set_global_device_type(device)
+#     if method == 'tsne':
+#         model = TSNE(
+#             n_components=k,
+#             perplexity=50.0,
+#             n_neighbors=3*50.0,
+#             random_state=seed)
+#     elif method == 'umap':
+#         model = UMAP(
+#             n_components=k,
+#             min_dist=0.0,
+#             n_neighbors=30,
+#             random_state=seed)
+#     elif method == 'pca':
+#         model = PCA(
+#             n_components=k
+#             )
+#     if pca_preprocess:
+#         # dim reduction
+#         pca_model = PCA(n_components=50)
+#         arr = pca_model.fit_transform(arr)
+#     model_result = model.fit_transform(arr)
+#     return model_result
 
 
 def neighborhood_hit(arr, labels, k=5, metric='minkowski'):
