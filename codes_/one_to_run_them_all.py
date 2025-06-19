@@ -3,8 +3,9 @@ from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor
 import main as run_model
 import analysis_model_evaluation as analyze
+import argparse
 
-def run_main_py_calls(output_dir, max_workers=4):
+def run_main_calls(output_dir, max_workers=4):
     jobs = []
     all_data = ["mnist", "fmnist", "kmnist", "emnist", "cifar10"]
 
@@ -74,3 +75,12 @@ def run_analysis_calls(output_dir, max_workers=4):
     # Parallel execution
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         list(tqdm(executor.map(analyze.main, jobs), total=len(jobs), desc="Running analysis"))
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-o", "--output")
+    parser.add_argument("-w", "--workers", type=int, default=4)
+    args = parser.parse_args()
+    
+    run_main_calls(args.output, args.workers)
+    run_analysis_calls(args.outputs, args.workers)
