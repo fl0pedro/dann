@@ -6,11 +6,13 @@ Created on Tue May 18 12:00:15 2021.
 """
 import os
 import time
+import tqdm
 import pickle
 import pathlib
 import numpy as np
 import pandas as pd
 import argparse
+from concurrent.futures import ProcessPoolExecutor
 from main import main as run_model
 from itertools import product
 
@@ -19,6 +21,7 @@ from opt import get_model_idx
 
 def parse_args(args: list[str] | None = None):
     parser = argparse.ArgumentParser()
+    parser.add_argument("-w", "--workers", type=int, default=4)
     parser.add_argument("-o", "--output", dest="dirname")
     parser.add_argument("--gpu", action="store_const", const="1", default="")
     parser.add_argument("--force", action="store_true")
@@ -77,6 +80,7 @@ def main(args: list[str] | None = None):
     dirname = pathlib.Path(args.dirname, f"results_{args.dataset}_{args.num_layers}_layer{tag}")
 
     for model_type, sigma, num_soma, num_dends, t in product(models, sigmas, somata, dendrites, trials):
+        jobs = []
         fname = dirname / model_type / f"results_sigma_{sigma}_trial_{t}_dends_{num_dends}_soma_{num_soma}.pkl"
         if not fname.exists() and not args.force:
             input_args = ""
@@ -91,9 +95,13 @@ def main(args: list[str] | None = None):
             input_args += f" --trial {t} --model {model_index} --dataset {args.dataset} --num-layers {args.num_layers} --sigma {sigma} -d {num_dends} -s {num_soma} -o {args.dirname} --backend {args.backend}"
             
             print("uv run main.py", *input_args.split())
-            print(input_args.split())
-            run_model(input_args.split())
+            jobs.append(input_args.split())
+    
+    with ProcessPoolExecutor(max_workers=args.workers) as executor:
+        list(tqdm(executor.map(run_model, jobs), total=len(jobs), desc="Running models"))
 
+    for model_type, sigma, num_soma, num_dends, t in product(models, sigmas, somata, dendrites, trials):
+        fname = dirname / model_type / f"results_sigma_{sigma}_trial_{t}_dends_{num_dends}_soma_{num_soma}.pkl"
         with open(fname, "rb") as f:
             data = pickle.load(f)
 

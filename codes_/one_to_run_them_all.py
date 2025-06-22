@@ -73,19 +73,19 @@ def run_analysis_calls(output_dir, max_workers=4, backend="torch", gpu=False):
         all_data = ["mnist", "fmnist", "kmnist", "emnist", "cifar10"]
 
         for l in [2, 3]:
-            args = f"--num-layers {l} -o {output_dir} --backend {backend} {'--gpu' if gpu else ''}".split()
+            args = f"--num-layers {l} -o {output_dir} --backend {backend} {'--gpu' if gpu else ''} -w {max_workers}".split()
             jobs.append(args)
 
         for data in all_data:
-            args = f"--dataset {data} --dropout -o {output_dir} --backend {backend} {'--gpu' if gpu else ''}".split()
+            args = f"--dataset {data} --dropout -o {output_dir} --backend {backend} {'--gpu' if gpu else ''} -w {max_workers}".split()
             jobs.append(args)
 
         for lr in [0.01, 0.0001]:
-            args = f"--learning-rate {lr} -o {output_dir} --backend {backend} {'--gpu' if gpu else ''}".split()
+            args = f"--learning-rate {lr} -o {output_dir} --backend {backend} {'--gpu' if gpu else ''} -w {max_workers}".split()
             jobs.append(args)
 
         for data in all_data:
-            args = f"--dataset {data} -o {output_dir} --backend {backend} {'--gpu' if gpu else ''}".split()
+            args = f"--dataset {data} -o {output_dir} --backend {backend} {'--gpu' if gpu else ''} -w {max_workers}".split()
             jobs.append(args)
 
         with open('analysis_' + job_file, 'w') as f:
