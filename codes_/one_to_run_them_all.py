@@ -60,6 +60,9 @@ def run_main_calls(output_dir, max_workers=4, backend="jax", gpu=False):
     # Parallel execution
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         list(tqdm(executor.map(run_model.main, jobs), total=len(jobs), desc="Running models"))
+
+    for job in tqdm(jobs, desc="Running models"):
+        analyze.main(job)
     
     # os.remove(job_file)
 
@@ -92,8 +95,11 @@ def run_analysis_calls(output_dir, max_workers=4, backend="torch", gpu=False):
             f.write('\n'.join([' '.join(j) for j in jobs]))
             
     # Parallel execution
-    with ProcessPoolExecutor(max_workers=max_workers) as executor:
-        list(tqdm(executor.map(analyze.main, jobs), total=len(jobs), desc="Running analysis"))
+    # with ProcessPoolExecutor(max_workers=max_workers) as executor:
+    #     list(tqdm(map(analyze.main, jobs), total=len(jobs), desc="Running analysis"))
+    
+    for job in tqdm(jobs, desc="Running analysis"):
+        analyze.main(job)
     
     # os.remove(job_file)
 
