@@ -9,7 +9,7 @@ import argparse
 import pathlib
 import pickle
 import copy
-from functools import cache
+from functools import cache, partial
 
 def parse_args(args: list[str] | None = None):
     parser = argparse.ArgumentParser()
@@ -39,29 +39,26 @@ from collections import namedtuple
 
 @cache
 def init(backend: str, gpu: str):
-    os.environ["KERAS_BACKEND"] = backend
-    os.environ["CUDA_VISIBLE_DEVICES"] = gpu
-
-    import keras
     from opt import (
         custom_train_loop_tensorflow, custom_train_loop_torch, custom_train_loop_jax,
-        make_masks, get_model, get_data, get_model_name
+        make_masks, get_model, get_data, get_model_name, init_keras
     )
+    keras, _ = init_keras(backend, gpu)
 
     BackendContext = namedtuple("BackendContext", [
         "keras", "train_loops", "make_masks", "get_model", "get_data", "get_model_name"
     ])
-
+    device = "gpu" if gpu == "1" else "cpu"
     return BackendContext(
         keras=keras,
         train_loops={
-            "tensorflow": custom_train_loop_tensorflow,
-            "torch": custom_train_loop_torch,
-            "jax": custom_train_loop_jax,
+            "tensorflow": partial(custom_train_loop_tensorflow, device=device),
+            "torch": partial(custom_train_loop_torch, device=device),
+            "jax": partial(custom_train_loop_jax, device=device),
         },
         make_masks=make_masks,
-        get_model=get_model,
-        get_data=get_data,
+        get_model=partial(get_model, backend=backend, device=device),
+        get_data=partial(get_data, backend=backend, device=device),
         get_model_name=get_model_name
     )
 
@@ -209,7 +206,6 @@ def update_model_config(args):
             args.rfs = "somatic"
             args.all_to_all = True
         case 11:
-            args.conventional = False
             args.rfs = "somatic"
             args.sparse = True
             args.all_to_all = True

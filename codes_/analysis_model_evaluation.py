@@ -11,9 +11,11 @@ import pathlib
 import numpy as np
 import pandas as pd
 import argparse
+from main import main as run_model
 from itertools import product
 
 from utils import num_trainable_params, get_power_of_10
+from opt import get_model_idx
 
 def parse_args(args: list[str] | None = None):
     parser = argparse.ArgumentParser()
@@ -27,6 +29,7 @@ def parse_args(args: list[str] | None = None):
     parser.add_argument("--num-layers", type=int, default=1)
     parser.add_argument("--learning-rate", dest="lr", type=float, default=1e-3)
     parser.add_argument("--dataset", choices=["mnist", "fmnist", "kmnist", "emnist", "cifar10"], default="fmnist")
+    parser.add_argument("--backend", choices=["tensorflow", "torch", "jax"], default="jax")
     return parser.parse_args(args)
 
 def main(args: list[str] | None = None):
@@ -49,12 +52,12 @@ def main(args: list[str] | None = None):
             "vanilla_ann", "vanilla_ann_dropout_0.2", "vanilla_ann_dropout_0.5", "vanilla_ann_dropout_0.8"
         ]
 
-    somata = [2<<i for i in range(5, 10)]
-    dendrites = [2<<i for i in range(7)]
+    somata = [1<<i for i in range(5, 10)]
+    dendrites = [1<<i for i in range(7)]
     sigmas = [0.0] if not args.noise else np.linspace(0,1,5).tolist()
     trials = range(1, 6)
     tag = "_sequential" if args.sequential else ""
-    tag += f"_lr_{args.learning_rate}" if args.learning_rate != 1e-3 else ""
+    tag += f"_lr_{args.lr}" if args.lr != 1e-3 else ""
 
     num_epochs = {
         "mnist": 15,
@@ -71,12 +74,25 @@ def main(args: list[str] | None = None):
 
     df_all, df_test = pd.DataFrame(), pd.DataFrame()
     
-    dirname = pathlib.Path(args.dirname, f"results_{args.datatype}_{args.num_layers}_layer{tag}")
+    dirname = pathlib.Path(args.dirname, f"results_{args.dataset}_{args.num_layers}_layer{tag}")
 
     for model_type, sigma, num_soma, num_dends, t in product(models, sigmas, somata, dendrites, trials):
         fname = dirname / model_type / f"results_sigma_{sigma}_trial_{t}_dends_{num_dends}_soma_{num_soma}.pkl"
-        if not fname.exists() and not args.force():
-            continue
+        if not fname.exists() and not args.force:
+            input_args = ""
+            if "dropout" in model_type:
+                temp = model_type.split('_')
+                dropout = float(temp[-1])
+                model_index = get_model_idx('_'.join(temp[:-2]))
+                input_args += f" --dropout {dropout}"
+            else:
+                model_index = get_model_idx(model_type)
+            
+            input_args += f" --trial {t} --model {model_index} --dataset {args.dataset} --num-layers {args.num_layers} --sigma {sigma} -d {num_dends} -s {num_soma} -o {args.dirname} --backend {args.backend}"
+            
+            print("uv run main.py", *input_args.split())
+            print(input_args.split())
+            run_model(input_args.split())
 
         with open(fname, "rb") as f:
             data = pickle.load(f)
@@ -99,7 +115,7 @@ def main(args: list[str] | None = None):
         for k, v in meta.items():
             df[k] = v
 
-        df_all = df_all.append(df, ignore_index=True)
+        df_all = df_all._append(df, ignore_index=True)
 
         df_test_entry = {
             "test_acc": data["test_acc"],
@@ -114,7 +130,7 @@ def main(args: list[str] | None = None):
             "num_epochs_min": int(np.argmin(data["val_loss"])),
         }
 
-        df_test = df_test.append(pd.DataFrame([df_test_entry]), ignore_index=True)
+        df_test = df_test._append(pd.DataFrame([df_test_entry]), ignore_index=True)
 
     if args.dirname:
         results = {"training": df_all, "testing": df_test}

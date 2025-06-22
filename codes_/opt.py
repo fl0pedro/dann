@@ -8,21 +8,27 @@ Created on Sun Mar 14 09:37:20 2021.
 
 import os
 import time
-import keras
 import struct
 import numpy as np
-
-from keras.utils import Progbar
+from functools import cache
 
 from receptive_fields import connectivity
 from receptive_fields import receptive_fields
 from receptive_fields import random_connectivity
 
+@cache
+def init_keras(backend:str, gpu:str = ""):
+    os.environ["KERAS_BACKEND"] = backend
+    os.environ["CUDA_VISIBLE_DEVICES"] = gpu
+
+    import keras
+    from keras.utils import Progbar
+    return keras, Progbar
 
 def get_data(
     validation_split, dtype='mnist', normalize=True,
     add_noise=False, sigma=None, sequential=False,
-    batch_size=None, seed=None
+    batch_size=None, seed=None, backend="torch", device="cpu", *, np=np
     ):
     """
     Get the dataset.
@@ -49,6 +55,8 @@ def get_data(
         The size of the batch for mini-batch gradient descent. Default is None.
     seed : int, optional
         A seed to initialize the BitGenerator. The default is None.
+    np : Callable, optional
+        Numpy like backend (e.g. numpy vs jax.numpy)
 
     Returns
     -------
@@ -64,6 +72,7 @@ def get_data(
         The number of channels of input images. RGB images contain 3 channels.
 
     """
+    keras, _ = init_keras(backend, "1" if device == "gpu" else "")
     # Prepare the training dataset.
     if dtype == 'mnist':
         (x_train, y_train),\
@@ -181,7 +190,7 @@ def check_common_member(a, b):
 
 def sequential_preprocess(
     input_train, target_train, batch_size,
-    validation_split, seed=None):
+    validation_split, seed=None, *, np=np):
     """
     Appearance of the data in a sequential manner.
 
@@ -199,6 +208,8 @@ def sequential_preprocess(
         Percent of data to be kept for validation.
     seed : int, optional
         A seed to initialize the BitGenerator. The default is None.
+    np : Callable, optional
+        Numpy like backend (e.g. numpy vs jax.numpy)
 
     Raises
     ------
@@ -263,7 +274,7 @@ def sequential_preprocess(
     return dataset
 
 
-def load_dataset(path_dataset):
+def load_dataset(path_dataset, *, np=np):
     """
     Load a dataset from a binary file.
 
@@ -271,6 +282,8 @@ def load_dataset(path_dataset):
     ----------
     path_dataset : str
         The file path to the dataset.
+    np : Callable, optional
+        Numpy like backend (e.g. numpy vs jax.numpy)
 
     Returns
     -------
@@ -289,7 +302,7 @@ def load_dataset(path_dataset):
         return data
 
 
-def load_label(path_label):
+def load_label(path_label, *, np):
     """
     Load labels from a binary file.
 
@@ -297,6 +310,8 @@ def load_label(path_label):
     ----------
     path_label : str
         The file path to the labels.
+    np : Callable, optional
+        Numpy like backend (e.g. numpy vs jax.numpy)
 
     Returns
     -------
@@ -314,7 +329,7 @@ def load_label(path_label):
 
 
 
-def perturb_array(arr, perturbation, amin=0, amax=1):
+def perturb_array(arr, perturbation, amin=0, amax=1, *, np=np):
     """
     Perturbation function that adds a given pertubation(s) to a given image(s).
 
@@ -328,6 +343,8 @@ def perturb_array(arr, perturbation, amin=0, amax=1):
         The minimum value. The default is 0.
     amax : float, optional
         The maximum value. The default is 1.
+    np : Callable, optional
+        Numpy like backend (e.g. numpy vs jax.numpy)
 
     Returns
     -------
@@ -342,7 +359,7 @@ def make_masks(
     dends, soma, synapses, num_layers, img_width, img_height,
     num_classes=10, channels=1, conventional=False, sparse=False,
     rfs=True, rfs_type='somatic', rfs_mode='random',
-    input_sample=None, seed=None
+    input_sample=None, seed=None, *, np=np
     ):
     """
     Make masks to transform a traditional ANN in a dendritic ANN.
@@ -377,15 +394,17 @@ def make_masks(
         Mode of rfs construction. Default is `random`. Other valid options
         are `one_to_one` and `constant`. Refer to receptive_fields.py in
         random_connectivity function for more information.
+    np : Callable, optional
+        Numpy like backend (e.g. numpy vs jax.numpy)
 
     Returns
     -------
-    Masks : list
+    masks : list
         A list with np.ndarrays containing the boolean masks for all layer
         weights and biases.
 
     """
-    Masks = []
+    masks = []
     for i in range(num_layers):
         if i == 0:
             # first layer --> create a matrix with input dimensions.
@@ -402,7 +421,7 @@ def make_masks(
 
         # when RFs are enabled!
         if rfs:
-            Mask_s_d, centers = receptive_fields(
+            mask_s_d, centers = receptive_fields(
                 matrix, somata=soma[i],
                 dendrites=dends[i],
                 num_of_synapses=synapses,
@@ -418,68 +437,78 @@ def make_masks(
             factor = channels if i == 0 else 1
 
             # for soma to the next dendrites (if more than two layers)
-            Mask_s_d = random_connectivity(
+            mask_s_d = random_connectivity(
                 inputs=inputs_size*factor,
                 outputs=soma[i]*dends[i],
                 conns=synapses*soma[i]*dends[i],
                 seed=seed,
             )
-        Masks.append(Mask_s_d)
+        masks.append(mask_s_d)
         # create a mask with `ones` for biases
-        Masks.append(np.ones((Mask_s_d.shape[1], )).astype('int'))
+        masks.append(np.ones((mask_s_d.shape[1], )).astype('int'))
         # Create structured connectivity if not `sparse`,
         # else random (i.e., sparse).
         if not sparse:
-            Mask_d_s = connectivity(
+            mask_d_s = connectivity(
                 inputs=dends[i]*soma[i],
                 outputs=soma[i]
             )
         else:
-            Mask_d_s = random_connectivity(
+            mask_d_s = random_connectivity(
                 inputs=dends[i]*soma[i],
                 outputs=soma[i],
                 conns=dends[i]*soma[i],
                 seed=seed,
             )
         # Append the masks
-        Masks.append(Mask_d_s)
+        masks.append(mask_d_s)
         # create a mask with `ones` for biases
-        Masks.append(np.ones((Mask_d_s.shape[1], )).astype('int'))
+        masks.append(np.ones((mask_d_s.shape[1], )).astype('int'))
 
     # If vanilla ANN --> re-write the masks with ones
     # for vanilla ANN all-to-all connectivity and RFs
     if conventional:
         if rfs or sparse:
             # vanilla ANN with random, sparse inputs, or RFs
-            for i, m in enumerate(Masks):
+            for i, m in enumerate(masks):
                 # `4` denotes the number of masks per dendrosomatic layer
                 # So, elements 0, 4, 8, 12, etc will have the masks defined above.
                 # All other layers will have masks filled with ones.
                 if i % 4 != 0:
-                    Masks[i] = np.ones_like(m)
+                    masks[i] = np.ones_like(m)
         else:
             # vanilla ANN; create all masks with `ones`
-            for i, m in enumerate(Masks):
-                Masks[i] = np.ones_like(m)
+            for i, m in enumerate(masks):
+                masks[i] = np.ones_like(m)
 
     # dendritic or sparse all-to-all
     if input_sample == 'all_to_all':
-        for i, m in enumerate(Masks):
+        for i, m in enumerate(masks):
             # `4` denotes the number of masks per dendrosomatic layer
             # So, elements 0, 4, 8, 12, etc will take masks filled with ones.
             if i % 4 == 0:
-                Masks[i] = np.ones_like(m)
+                masks[i] = np.ones_like(m)
 
     # Add two masks for the output layer (weights and biases) set to 1.
-    Masks.append(np.ones((Masks[-2].shape[1], num_classes)).astype('int'))
-    Masks.append(np.ones((num_classes, )).astype('int'))
+    masks.append(np.ones((masks[-2].shape[1], num_classes)).astype('int'))
+    masks.append(np.ones((num_classes, )).astype('int'))
 
-    return Masks
+    return masks
 
+def get_ordered_model_names() -> list[str]:
+    return [
+        'dend_ann_random', 'dend_ann_global_rfs', 'dend_ann_local_rfs', 
+        'vanilla_ann', 'vanilla_ann_random', 'vanilla_ann_global_rfs', 'vanilla_ann_local_rfs', 
+        'sparse_ann', 'sparse_ann_global_rfs', 'sparse_ann_local_rfs', 
+        'dend_ann_all_to_all', 'sparse_ann_all_to_all'
+    ]
+
+def get_model_idx(name: str) -> int:
+    return get_ordered_model_names().index(name)
 
 def get_model_name(
         conventional=False, rfs=False, sparse=False,
-        rfs_type='somatic', input_sample=None):
+        rfs_type='somatic', input_sample=None, idx=None):
     """
     Get the model's name in str format.
 
@@ -503,6 +532,9 @@ def get_model_name(
         The full name of the model.
 
     """
+    if idx is not None:
+        return get_ordered_model_names()[idx]
+    
     if not conventional:
         if not sparse:
             if rfs:
@@ -532,7 +564,7 @@ def get_model_name(
 def get_model(
         input_shape, num_layers, dends, soma,
         num_classes, fname_model, relu_slope=0.1,
-        dropout=False, rate=0.0):
+        dropout=False, rate=0.0, backend="torch", device="cpu"):
     """
     Buld the model.
 
@@ -563,6 +595,7 @@ def get_model(
     model : keras.src.models.functional.Functional
         The compiled model. Run `model.summary()` to see its properties.
     """
+    keras, _ = init_keras(backend, "1" if device == "gpu" else "")
     # Get model
     # Create the input layer
     input_l = keras.Input(
@@ -571,6 +604,7 @@ def get_model(
     )
     # First hidden dendritic and somatic layer
     # Dendritic layer
+    print(dends[0]*soma[0])
     dend_l = keras.layers.Dense(
         dends[0]*soma[0],
         name="dend_1"
@@ -586,6 +620,7 @@ def get_model(
             name="dend_1_dropout"
         )(dend_l)
     # Somatic layer
+    print(soma[0])
     soma_l = keras.layers.Dense(
         soma[0],
         name="soma_1"
@@ -604,6 +639,7 @@ def get_model(
     # For loop for more layers
     for j in range(1, num_layers):
         # Dendritic layer
+        print(dends[j]*soma[j])
         dend_l = keras.layers.Dense(
             dends[j]*soma[j],
             name=f"dend_{j+1}"
@@ -619,6 +655,7 @@ def get_model(
                 name=f"dend_{j+1}_dropout"
             )(dend_l)
         # Somatic layer
+        print(soma[j])
         soma_l = keras.layers.Dense(
             soma[j],
             name=f"soma_{j+1}"
@@ -635,6 +672,7 @@ def get_model(
             )(soma_l)
 
     # Create the output layer
+    print(num_classes)
     output_l = keras.layers.Dense(
         num_classes, activation='softmax',
         name="output"
@@ -651,9 +689,9 @@ def get_model(
 
 
 def custom_train_loop_tensorflow(
-        model, loss_fn, optimizer, Masks, batch_size, num_epochs,
+        model, loss_fn, optimizer, masks, batch_size, num_epochs,
         x_train, y_train, x_val, y_val, x_test, y_test,
-        shuffle=True, early_stop=False, patience=0
+        shuffle=True, early_stop=False, patience=0, device="cpu"
     ):
     """
     Create the custom training loop for better handling and zeroing out gradients based on masks.
@@ -666,7 +704,7 @@ def custom_train_loop_tensorflow(
         The loss function.
     optimizer : TYPE
         The optimization algorithm.
-    Masks : list
+    masks : list
         List with masks for all layers. There are two maks per layer, one for
         weights and one for biases.
     batch_size : int
@@ -708,6 +746,8 @@ def custom_train_loop_tensorflow(
         per epoch, and test loss and accuracy.
     """
     import tensorflow as tf
+    keras, Progbar = init_keras("tensorflow", "1" if device == "gpu" else "")
+
     # Prepare the metrics
     # Accuracy metrics
     train_acc_metric = keras.metrics.SparseCategoricalAccuracy()
@@ -741,7 +781,7 @@ def custom_train_loop_tensorflow(
         # the gradients of the trainable variables with respect to the loss.
         grads = tape.gradient(loss_value, model.trainable_weights)
         # Apply the masks to zero out gradients of non existing connections.
-        grads_masked = [tf.math.multiply(g, m) for g, m in zip(grads, Masks)]
+        grads_masked = [tf.math.multiply(g, m) for g, m in zip(grads, masks)]
         # Check that updated gradients shape is the same as gradients.
         if len(grads) != len(grads_masked):
             raise ValueError("Gradients are unequal in size after masking.")
@@ -896,9 +936,9 @@ def custom_train_loop_tensorflow(
 
 
 def custom_train_loop_torch(
-        model, loss_fn, optimizer, Masks, batch_size, num_epochs,
+        model, loss_fn, optimizer, masks, batch_size, num_epochs,
         x_train, y_train, x_val, y_val, x_test, y_test,
-        shuffle=True, early_stop=False, patience=0, device='cpu'
+        shuffle=True, early_stop=False, patience=0, device="cpu"
     ):
     """
     Create the custom training loop for better handling and zeroing out gradients based on masks.
@@ -911,7 +951,7 @@ def custom_train_loop_torch(
         The loss function.
     optimizer : TYPE
         The optimization algorithm.
-    Masks : list
+    masks : list
         List with masks for all layers. There are two maks per layer, one for
         weights and one for biases.
     batch_size : int
@@ -953,8 +993,8 @@ def custom_train_loop_torch(
         per epoch, and test loss and accuracy.
     """
     import torch
-    os.environ["KERAS_BACKEND"] = "torch"
-
+    keras, Progbar = init_keras("torch", "1" if device == "gpu" else "")
+    
     # Create torch Datasets
     train_dataset = torch.utils.data.TensorDataset(
         torch.from_numpy(x_train).to(device), torch.from_numpy(y_train).to(device)
@@ -1027,7 +1067,7 @@ def custom_train_loop_torch(
             gradients = [v.value.grad for v in trainable_weights]
 
             # Modify the gradients with the masks
-            gradients_ = [torch.mul(gradients[i], Masks[i]) for i in range(len(gradients))]
+            gradients_ = [print(type(gradients[i]), type(masks[i])) and torch.mul(gradients[i], masks[i]) for i in range(len(gradients))]
             # Check that updated gradients shape is the same as gradients.
             if len(gradients) != len(gradients_):
                 raise ValueError("Gradients are unequal in size after masking.")
@@ -1135,9 +1175,9 @@ def custom_train_loop_torch(
 
 
 def custom_train_loop_jax(
-        model, loss_fn, optimizer, Masks, batch_size, num_epochs,
+        model, loss_fn, optimizer, masks, batch_size, num_epochs,
         x_train, y_train, x_val, y_val, x_test, y_test,
-        shuffle=True, early_stop=False, patience=0
+        shuffle=True, early_stop=False, patience=0, device="cpu"
     ):
     """
     Create the custom training loop for better handling and zeroing out gradients based on masks.
@@ -1150,7 +1190,7 @@ def custom_train_loop_jax(
         The loss function.
     optimizer : TYPE
         The optimization algorithm.
-    Masks : list
+    masks : list
         List with masks for all layers. There are two maks per layer, one for
         weights and one for biases.
     batch_size : int
@@ -1187,7 +1227,9 @@ def custom_train_loop_jax(
         per epoch, and test loss and accuracy.
     """
     import jax
+    import jax.numpy as jnp
     import tensorflow as tf
+    keras, Progbar = init_keras("jax", "1" if device == "gpu" else "")
 
     # Prepare the metrics.
     train_acc_metric = keras.metrics.SparseCategoricalAccuracy()
@@ -1202,8 +1244,11 @@ def custom_train_loop_jax(
         metric_variables,
         x, y):
 
+        print(type(trainable_variables), type(non_trainable_variables))
+        print(len(trainable_variables), len(non_trainable_variables))
+        print(*trainable_variables, sep='\n\n')
         y_pred, non_trainable_variables = model.stateless_call(
-            trainable_variables, non_trainable_variables, x
+            trainable_variables, non_trainable_variables, x, training=True
         )
         loss = loss_fn(y, y_pred)
         metric_variables = train_acc_metric.stateless_update_state(
@@ -1215,7 +1260,7 @@ def custom_train_loop_jax(
     grad_fn = jax.value_and_grad(compute_loss_and_updates, has_aux=True)
 
 
-    @jax.jit
+    # @jax.jit
     def train_step(state, data):
         (
             trainable_variables,
@@ -1224,11 +1269,12 @@ def custom_train_loop_jax(
             metric_variables,
         ) = state
         x, y = data
+        print(x.shape, y.shape)
         (loss, (non_trainable_variables, metric_variables)), grads = grad_fn(
             trainable_variables, non_trainable_variables, metric_variables, x, y
         )
         # Modify grads and multiply with masks
-        grads_masked = [jax.numpy.multiply(g, m) for g, m in zip(grads, Masks)]
+        grads_masked = [g*m for g, m in zip(grads, masks)]
         # Check that updated gradients shape is the same as gradients.
         if len(grads) != len(grads_masked):
             raise ValueError("Gradients are unequal in size after masking.")
@@ -1243,7 +1289,7 @@ def custom_train_loop_jax(
                  )
         return loss, state
 
-    @jax.jit
+    # @jax.jit
     def eval_step(state, data):
         trainable_variables, non_trainable_variables, metric_variables = state
         x, y = data
@@ -1261,7 +1307,7 @@ def custom_train_loop_jax(
         )
 
 
-    @jax.jit
+    # @jax.jit
     def test_step(state, data):
         trainable_variables, non_trainable_variables, metric_variables = state
         x, y = data
@@ -1330,7 +1376,7 @@ def custom_train_loop_jax(
         running_train_loss = 0.0
         # Iterate over the batches of the dataset.
         for step, train_data in enumerate(train_dataset):
-            train_data = (train_data[0].numpy(), train_data[1].numpy())
+            train_data = (jnp.array(train_data[0]), jnp.array(train_data[1]))
             train_loss, train_state = train_step(train_state, train_data)
             running_train_loss += train_loss
             # Update the progbar
@@ -1388,7 +1434,7 @@ def custom_train_loop_jax(
         # Eearly stopping: on epoch end
         if early_stop:
             wait += 1
-            if np.less(val_loss_list[-1], best):
+            if jnp.less(val_loss_list[-1], best):
                 best = val_loss_list[-1]
                 wait = 0
                 # Record the best weights if current results is better (less).
