@@ -30,6 +30,7 @@ def parse_args(args: list[str] | None = None):
     parser.add_argument("--learning-rate", dest="lr", type=float, default=1e-3)
     parser.add_argument("--dataset", choices=["mnist", "fmnist", "kmnist", "emnist", "cifar10"], default="fmnist")
     parser.add_argument("--backend", choices=["tensorflow", "torch", "jax"], default="jax")
+    parser.add_argument("-w", "--worker", type=int, default=4)
     return parser.parse_args(args)
 
 def main(args: list[str] | None = None):
