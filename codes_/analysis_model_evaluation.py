@@ -79,7 +79,7 @@ def main(args: list[str] | None = None):
 
     for model_type, sigma, num_soma, num_dends, t in product(models, sigmas, somata, dendrites, trials):
         fname = dirname / model_type / f"results_sigma_{sigma}_trial_{t}_dends_{num_dends}_soma_{num_soma}.pkl"
-        if not fname.exists() and not args.force:
+        if not fname.exists() or args.force:
             input_args = ""
             if "dropout" in model_type:
                 temp = model_type.split('_')
