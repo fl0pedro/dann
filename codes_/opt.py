@@ -20,6 +20,7 @@ from receptive_fields import random_connectivity
 def init_keras(backend:str, gpu:str = ""):
     os.environ["KERAS_BACKEND"] = backend
     os.environ["CUDA_VISIBLE_DEVICES"] = gpu
+    os.environ["JAX_PLATFORMS"] = "cpu" if gpu == "" else ""
 
     import keras
     from keras.utils import Progbar
