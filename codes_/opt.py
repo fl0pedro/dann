@@ -303,7 +303,7 @@ def load_dataset(path_dataset, *, np=np):
         return data
 
 
-def load_label(path_label, *, np):
+def load_label(path_label, *, np=np):
     """
     Load labels from a binary file.
 
