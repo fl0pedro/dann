@@ -604,7 +604,6 @@ def get_model(
     )
     # First hidden dendritic and somatic layer
     # Dendritic layer
-    print(dends[0]*soma[0])
     dend_l = keras.layers.Dense(
         dends[0]*soma[0],
         name="dend_1"
@@ -620,7 +619,6 @@ def get_model(
             name="dend_1_dropout"
         )(dend_l)
     # Somatic layer
-    print(soma[0])
     soma_l = keras.layers.Dense(
         soma[0],
         name="soma_1"
@@ -639,7 +637,6 @@ def get_model(
     # For loop for more layers
     for j in range(1, num_layers):
         # Dendritic layer
-        print(dends[j]*soma[j])
         dend_l = keras.layers.Dense(
             dends[j]*soma[j],
             name=f"dend_{j+1}"
@@ -655,7 +652,6 @@ def get_model(
                 name=f"dend_{j+1}_dropout"
             )(dend_l)
         # Somatic layer
-        print(soma[j])
         soma_l = keras.layers.Dense(
             soma[j],
             name=f"soma_{j+1}"
@@ -672,7 +668,6 @@ def get_model(
             )(soma_l)
 
     # Create the output layer
-    print(num_classes)
     output_l = keras.layers.Dense(
         num_classes, activation='softmax',
         name="output"

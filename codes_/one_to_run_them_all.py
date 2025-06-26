@@ -92,7 +92,7 @@ def run_analysis_calls(output_dir, max_workers=4, backend="torch", gpu=False):
             f.write('\n'.join([' '.join(j) for j in jobs]))
             
     # Parallel execution
-    with ProcessPoolExecutor(max_workers=max_workers) as executor:
+    with ProcessPoolExecutor(max_workers=max_workers, max_tasks_per_child=1) as executor:
         list(tqdm(executor.map(analyze.main, jobs), total=len(jobs), desc="Running analysis"))
     
     # os.remove(job_file)

@@ -65,7 +65,7 @@ def init(backend: str, gpu: str):
 
 def main(args: list[str] | None = None):
     args = parse_args(args)
-    print(args)
+    # print(args)
 
     backend = init(args.backend, args.gpu)
 
