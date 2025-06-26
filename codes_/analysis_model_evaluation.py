@@ -12,6 +12,7 @@ import pathlib
 import numpy as np
 import pandas as pd
 import argparse
+from random import shuffle
 from concurrent.futures import ProcessPoolExecutor
 from main import main as run_model
 from itertools import product
@@ -23,8 +24,9 @@ def parse_args(args: list[str] | None = None):
     parser = argparse.ArgumentParser()
     parser.add_argument("-w", "--workers", type=int, default=4)
     parser.add_argument("-o", "--output", dest="dirname")
+    parser.add_argument("-f", "--force", action="store_true")
+    parser.add_argument("-s", "--skip", "--skip-runs", action="store_true")
     parser.add_argument("--gpu", action="store_const", const="1", default="")
-    parser.add_argument("--force", action="store_true")
     parser.add_argument("--sequential", action="store_true")
     parser.add_argument("--early-stop", action="store_true")
     parser.add_argument("--noise", action="store_true")
@@ -79,29 +81,35 @@ def main(args: list[str] | None = None):
     
     dirname = pathlib.Path(args.dirname, f"results_{args.dataset}_{args.num_layers}_layer{tag}")
 
-    jobs = []
-    for model_type, sigma, num_soma, num_dends, t in product(models, sigmas, somata, dendrites, trials):
-        fname = dirname / model_type / f"results_sigma_{sigma}_trial_{t}_dends_{num_dends}_soma_{num_soma}.pkl"
-        if not fname.exists() or args.force:
-            input_args = ""
-            if "dropout" in model_type:
-                temp = model_type.split('_')
-                dropout = float(temp[-1])
-                model_index = get_model_idx('_'.join(temp[:-2]))
-                input_args += f" --dropout {dropout}"
-            else:
-                model_index = get_model_idx(model_type)
-            
-            input_args += f" --trial {t} --model {model_index} --dataset {args.dataset} --num-layers {args.num_layers} --sigma {sigma} -d {num_dends} -s {num_soma} -o {args.dirname} --backend {args.backend}"
-            
-            # print("uv run main.py", *input_args.split())
-            jobs.append(input_args.split())
-    
-    with ProcessPoolExecutor(max_workers=args.workers) as executor:
-        list(tqdm(executor.map(run_model, jobs), total=len(jobs), desc="Running models"))
+    if not args.skip:
+        jobs = []
+        for model_type, sigma, num_soma, num_dends, t in product(models, sigmas, somata, dendrites, trials):
+            fname = dirname / model_type / f"results_sigma_{sigma}_trial_{t}_dends_{num_dends}_soma_{num_soma}.pkl"
+            if not fname.exists() or args.force:
+                input_args = ""
+                if "dropout" in model_type:
+                    temp = model_type.split('_')
+                    dropout = float(temp[-1])
+                    model_index = get_model_idx('_'.join(temp[:-2]))
+                    input_args += f" --drop-rate {dropout}"
+                else:
+                    model_index = get_model_idx(model_type)
+                
+                input_args += f" --trial {t} --model {model_index} --dataset {args.dataset} --num-layers {args.num_layers} --sigma {sigma} -d {num_dends} -s {num_soma} -o {args.dirname} --backend {args.backend}"
+                
+                # print("uv run main.py", *input_args.split())
+                jobs.append(input_args.split())
+        
+        with ProcessPoolExecutor(max_workers=args.workers) as executor:
+            shuffle(jobs)
+            list(tqdm(executor.map(run_model, jobs), total=len(jobs), desc="Running models"))
 
     for model_type, sigma, num_soma, num_dends, t in product(models, sigmas, somata, dendrites, trials):
         fname = dirname / model_type / f"results_sigma_{sigma}_trial_{t}_dends_{num_dends}_soma_{num_soma}.pkl"
+        
+        if not fname.exists() and args.skip:
+            continue
+
         with open(fname, "rb") as f:
             data = pickle.load(f)
 
