@@ -8,4 +8,4 @@
 #SBATCH --mail-user=f.assmuth@fz-juelich.de
 #SBATCH --job-name=dANN
 
-uv run one_to_run_them_all.py -o all_out_2 -w 1 --backend tensorflow
+uv run one_to_run_them_all.py -o all_out_2 -w $(nproc) --backend tensorflow
