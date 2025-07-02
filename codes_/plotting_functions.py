@@ -152,7 +152,7 @@ def keep_models(df_all, names):
     """
     df = pd.DataFrame()
     for n in names:
-        df = pd.concat([df,  df_all[(df_all['model'] == n)]])
+        df = pd.concat([df,  df_all[(df_all == n)]])
     return df
 
 

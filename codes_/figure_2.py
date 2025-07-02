@@ -8,6 +8,7 @@ Created on Wed Feb 14 15:11:38 2024
 import os
 import pickle
 import pathlib
+import argparse
 import numpy as np
 import seaborn as sns
 import seaborn_image as isns
@@ -19,6 +20,13 @@ from plotting_functions import my_style, calculate_best_model
 
 from opt import get_data
 
+parser = argparse.ArgumentParser()
+
+parser.add_argument("source")
+parser.add_argument("-o", "--output", default="../FinalFigs_manuscript")
+
+args = parser.parse_args()
+
 # Set the seaborn style and color palette
 sns.set_style("white")
 plt.rcParams.update(my_style())
@@ -29,14 +37,14 @@ palette = [
 ]
 
 datatype = 'fmnist'
-dirname_figs = '../FinalFigs_manuscript'
+dirname_figs = args.output
 if not os.path.exists(f"{dirname_figs}"):
     os.mkdir(f"{dirname_figs}")
 
 seq = False
 seq_tag = "_sequential" if seq else ""
 num_layers = 1
-data_dir = "../DATA/"
+data_dir = args.source
 dirname = f"{data_dir}/results_{datatype}_{num_layers}_layer{seq_tag}/"
 
 # Create the figure

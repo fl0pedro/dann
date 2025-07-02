@@ -8,15 +8,23 @@ Created on Wed Feb 21 15:45:25 2024
 import os
 import pickle
 import pathlib
+import argparse
 import pandas as pd
 
 from plotting_functions import find_best_models, model_config
 from plotting_functions import fix_names, keep_models
 
-# data store directory
-data_dir = "../DATA/"
+parser = argparse.ArgumentParser()
 
-dirname_figs = '../FinalFigs_manuscript'
+parser.add_argument("source")
+parser.add_argument("-o", "--output", default="../FinalFigs_manuscript")
+
+args = parser.parse_args()
+
+# data store directory
+data_dir = args.source
+
+dirname_figs = args.output
 if not os.path.exists(f"{dirname_figs}"):
     os.mkdir(f"{dirname_figs}")
 
@@ -39,6 +47,9 @@ for datatype in datatypes:
         results = pickle.load(file)
     df_all = fix_names(results['training'])
     df_test = fix_names(results['testing'])
+
+    df_all.dropna(inplace=True)
+    df_test.dropna(inplace=True)
 
     # Keep models to plot, i.e., dend ANN and vanilla ANN.
     model_to_keep = [

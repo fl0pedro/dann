@@ -8,6 +8,7 @@ Created on Mon Jul  8 09:44:19 2024
 
 import os
 import pathlib
+import argparse
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -15,6 +16,13 @@ import matplotlib.transforms as mtransforms
 
 from plotting_functions import my_style, calc_eff_scores
 from plotting_functions import keep_models
+
+parser = argparse.ArgumentParser()
+
+parser.add_argument("source")
+parser.add_argument("-o", "--output", default="../FinalFigs_manuscript")
+
+args = parser.parse_args()
 
 # Set the seaborn style and color palette
 sns.set_style("white")
@@ -27,12 +35,12 @@ palette = [
     '#d0bbff', '#7c7099'
 ]
 
-dirname_figs = '../FinalFigs_manuscript'
+dirname_figs = args.output
 if not os.path.exists(f"{dirname_figs}"):
     os.mkdir(f"{dirname_figs}")
 
 num_layers = 1
-data_dir = "../DATA/"
+data_dir = args.source
 
 # Create the figure
 fig = plt.figure(

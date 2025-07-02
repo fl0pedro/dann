@@ -8,6 +8,7 @@ Created on Fri Feb 23 15:42:32 2024
 import os
 import pickle
 import pathlib
+import argparse
 import numpy as np
 import seaborn as sns
 import seaborn_image as isns
@@ -23,6 +24,12 @@ from plotting_functions import calc_eff_scores
 from plotting_functions import find_best_models
 from plotting_functions import keep_best_models_data
 
+parser = argparse.ArgumentParser()
+
+parser.add_argument("source")
+parser.add_argument("-o", "--output", default="../FinalFigs_manuscript")
+
+args = parser.parse_args()
 
 # Set the seaborn style and color palette
 # print(sns.color_palette("pastel3").as_hex())
@@ -34,7 +41,7 @@ palette = [
     '#8d8d8d'
 ]
 
-dirname_figs = '../FinalFigs_manuscript'
+dirname_figs = args.output
 if not os.path.exists(f"{dirname_figs}"):
     os.mkdir(f"{dirname_figs}")
 
@@ -101,7 +108,7 @@ for s, (labels, ax) in zip(sigmas, axt.items()):
 
 
 num_layers = 1
-data_dir = "../DATA/"
+data_dir = args.source
 dirname = f"{data_dir}/results_{datatype}_{num_layers}_layer/"
 
 fname_store =  pathlib.Path(f"{dirname}/output_all_final")

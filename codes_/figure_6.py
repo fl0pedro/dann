@@ -7,6 +7,7 @@ Created on Fri Feb 23 12:16:41 2024
 """
 import os
 import pathlib
+import argparse
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -18,6 +19,12 @@ from plotting_functions import my_style
 from plotting_functions import get_class_names
 from plotting_functions import calculate_proj_scores
 
+parser = argparse.ArgumentParser()
+
+parser.add_argument("source")
+parser.add_argument("-o", "--output", default="../FinalFigs_manuscript")
+
+args = parser.parse_args()
 
 # Set the seaborn style and color palette
 sns.set_style("white")
@@ -26,7 +33,7 @@ plt.rcParams.update(my_style())
 palette = ['#8de5a1', '#ff9f9b', '#a1c9f4', '#b5b5ac']
 palette2 = ['#409140', '#e06666', '#7abacc', '#8d8d8d']
 
-dirname_figs = '../FinalFigs_manuscript'
+dirname_figs = args.output
 if not os.path.exists(f"{dirname_figs}"):
     os.mkdir(f"{dirname_figs}")
 
