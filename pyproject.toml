@@ -12,6 +12,8 @@ dependencies = [
     "gast",
     "google-pasta",
     "grpcio",
+    "ipykernel>=6.29.5",
+    "ipython>=8.18.1",
     "jax",
     "jax[cuda]; platform_system == 'Linux'",
     "keras",

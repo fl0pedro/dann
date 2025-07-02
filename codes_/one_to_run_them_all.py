@@ -63,7 +63,7 @@ def run_main_calls(output_dir, max_workers=4, backend="jax", gpu=False):
         jobs = [j + f"-o {output_dir} --backend {backend} {'--gpu' if gpu else ''}".split() for j in jobs]
         list(tqdm(executor.map(run_model.main, shuffle(jobs)), total=len(jobs), desc="Running models"))
     
-    # os.remove(job_file)
+    os.remove(job_file)
 
 
 def run_analysis_calls(output_dir, max_workers=4, backend="torch", gpu=False):
@@ -95,11 +95,11 @@ def run_analysis_calls(output_dir, max_workers=4, backend="torch", gpu=False):
             
     # Parallel execution
     with ProcessPoolExecutor(max_workers=max_workers, max_tasks_per_child=1) as executor:
-        jobs = [j + f"-o {output_dir} --backend {backend} {'--gpu' if gpu else ''} -w {max_workers//len(jobs) or 1}".split() for j in jobs]
+        jobs = [j + f"-o {output_dir} --backend {backend} {'--gpu' if gpu else ''} -w {max_workers//len(jobs) or 1} -s".split() for j in jobs]
         shuffle(jobs)
         list(tqdm(executor.map(analyze.main, jobs), total=len(jobs), desc="Running analysis"))
     
-    # os.remove(job_file)
+    os.remove(job_file)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -109,5 +109,5 @@ if __name__ == "__main__":
     parser.add_argument("--gpu", action="store_const", const="1", default="")
     args = parser.parse_args()
     
-    # run_main_calls(args.output, args.workers, args.backend, args.gpu)
+    run_main_calls(args.output, args.workers, args.backend, args.gpu)
     run_analysis_calls(args.output, args.workers, args.backend, args.gpu)
