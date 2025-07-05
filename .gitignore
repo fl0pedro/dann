@@ -166,3 +166,5 @@ DATASETS/
 FinalFigs_manuscript/
 
 .DS_store
+figs/
+DATA_LOCAL/

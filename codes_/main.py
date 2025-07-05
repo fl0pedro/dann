@@ -10,6 +10,8 @@ import pathlib
 import pickle
 import copy
 from functools import cache, partial
+import numpy as np
+from LocallyConnected2d import MultiLayerLocallyConnected2D
 
 def parse_args(args: list[str] | None = None):
     parser = argparse.ArgumentParser()
@@ -67,6 +69,9 @@ def main(args: list[str] | None = None):
     args = parse_args(args)
     # print(args)
 
+    # if args.model == 12:
+    #     args.backend = "jax"
+    
     backend = init(args.backend, args.gpu)
 
     run_tag = ""
@@ -75,15 +80,18 @@ def main(args: list[str] | None = None):
     if args.lr != 1e-3:
         run_tag += f"_lr_{args.lr}"
 
-    fname_model = backend.get_model_name(
-        args.conventional,
-        args.rfs is not None,
-        args.sparse,
-        args.rfs,
-        "all_to_all" if args.all_to_all else None
-    )
-    if args.drop_rate:
-        fname_model += f"_dropout_{args.drop_rate}"
+    if args.model == 12:
+        fname_model = "LocallyConnected2D"
+    else:
+        fname_model = backend.get_model_name(
+            args.conventional,
+            args.rfs is not None,
+            args.sparse,
+            args.rfs,
+            "all_to_all" if args.all_to_all else None
+        )
+        if args.drop_rate:
+            fname_model += f"_dropout_{args.drop_rate}"
 
     print(f"\nModel: {fname_model}, trial: {args.trial}, layers: {args.num_layers}, "
           f"noise: {args.sigma}, dataset: {args.dataset}, tag: {run_tag}\n")
@@ -112,8 +120,12 @@ def main(args: list[str] | None = None):
         sigma=args.sigma,
         sequential=args.sequential,
         batch_size=batch_size,
-        seed=args.trial,
+        seed=args.trial
     )
+
+    if args.model == 12:
+        rs = lambda x: x.reshape(-1, img_height, img_width, channels)
+        data = {k: rs(v) if not isinstance(v, list) else [rs(x) for x in v] for k, v in data.items()}
 
     x_train, x_val, x_test = data["train"], data["val"], data["test"]
     y_train, y_val, y_test = labels["train"], labels["val"], labels["test"]
@@ -121,29 +133,6 @@ def main(args: list[str] | None = None):
     num_classes = len(set(y_train))
     dends = args.num_layers * [args.num_dendrites]
     soma = args.num_layers * [args.num_somas]
-
-    input_shape = (img_width * img_height * channels,)
-    model = backend.get_model(
-        input_shape, args.num_layers, dends, soma, num_classes,
-        fname_model=fname_model, dropout=bool(args.drop_rate), rate=args.drop_rate,
-    )
-
-    masks = backend.make_masks(
-        dends, soma, args.nsyns, args.num_layers,
-        img_width, img_height, num_classes, channels,
-        conventional=args.conventional,
-        rfs=args.rfs is not None,
-        rfs_type=args.rfs,
-        rfs_mode="random",
-        seed=args.trial,
-    )
-
-    params = model.get_weights()
-    model.set_weights([p * m for p, m in zip(params, masks)])
-    model_untrained = copy.deepcopy(model)
-
-    optimizer = backend.keras.optimizers.Adam(learning_rate=args.lr)
-    loss_fn = backend.keras.losses.SparseCategoricalCrossentropy(from_logits=False)
 
     num_epochs = {
         "mnist": 15,
@@ -157,6 +146,46 @@ def main(args: list[str] | None = None):
     if args.early_stop:
         num_epochs = 100
 
+    if args.model == 12:
+        kernels = [(int(np.sqrt(k))+1,)*2 for pairs in zip(dends, soma) for k in pairs]
+        strides = [tuple(x//int(np.sqrt(args.nsyns)) or 1 for x in k) for k in kernels]
+        model = MultiLayerLocallyConnected2D(
+            input_shape=(img_width, img_height),
+            layer_depth=[channels, 1],
+            output_size=10,
+            kernels=kernels,
+            strides=strides,
+            bias=True
+        )
+        masks = None
+    else:
+        input_shape = (img_width * img_height * channels,)
+        model = backend.get_model(
+            input_shape, args.num_layers, dends, soma, num_classes,
+            fname_model=fname_model, dropout=bool(args.drop_rate), rate=args.drop_rate,
+        )
+
+        masks = backend.make_masks(
+            dends, soma, args.nsyns, args.num_layers,
+            img_width, img_height, num_classes, channels,
+            conventional=args.conventional,
+            rfs=args.rfs is not None,
+            rfs_type=args.rfs,
+            rfs_mode="random",
+            seed=args.trial,
+        )
+
+        # params = model.get_weights()
+        # model.set_weights([p * m for p, m in zip(params, masks)])
+    
+        # print(*[f"{l.name}:\n\tweights: {l.weights[0].shape}\n\tbias: {l.weights[1].shape}" for l in model.layers if len(l.weights) > 0], sep="\n\n")
+        model.params = params
+
+    optimizer = backend.keras.optimizers.Adam(learning_rate=args.lr)
+    loss_fn = backend.keras.losses.SparseCategoricalCrossentropy(from_logits=False)
+
+    model_untrained = copy.deepcopy(model)
+
     train_fn = backend.train_loops[args.backend]
 
     model, out = train_fn(
@@ -164,8 +193,11 @@ def main(args: list[str] | None = None):
         x_train, y_train, x_val, y_val, x_test, y_test,
         shuffle=not args.sequential, early_stop=args.early_stop, patience=10,
     )
+    
+    print(model.summary())
 
-    out["masks"] = masks
+    if args.model != 12:
+        out["masks"] = masks
 
     if args.dirname:
         os.makedirs(fulldir, exist_ok=True)

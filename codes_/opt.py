@@ -135,7 +135,7 @@ def get_data(
     else:
         # Prepare the validation dataset.
         # Reserve samples for validation.
-        valsize = int(validation_split*x_train.shape[0])
+        valsize = int(validation_split*len(x_train))
         x_val = x_train[-valsize:]
         y_val = y_train[-valsize:]
         x_train = x_train[:-valsize]
@@ -150,18 +150,18 @@ def get_data(
     labels['val'] = y_val
     labels['test'] = y_test
 
+    def perturb(data):
+        pertrubation = rng.normal(
+            loc=0.0,
+            scale=sigma,
+            size=data.shape
+        )
+        return perturb_array(data, pertrubation)
+
     if add_noise:
         rng = np.random.default_rng(seed)
         for key in data.keys():
-            pertrubation = rng.normal(
-                loc=0.0,
-                scale=sigma,
-                size=data[key].shape
-            )
-            data[key] = perturb_array(
-                data[key],
-                pertrubation
-            )
+            data[key] = perturb(data[key])
 
     return data, labels, img_height, img_width, channels
 
@@ -567,7 +567,7 @@ def get_model(
         num_classes, fname_model, relu_slope=0.1,
         dropout=False, rate=0.0, backend="torch", device="cpu"):
     """
-    Buld the model.
+    Build the model.
 
     Parameters
     ----------
@@ -597,6 +597,7 @@ def get_model(
         The compiled model. Run `model.summary()` to see its properties.
     """
     keras, _ = init_keras(backend, "1" if device == "gpu" else "")
+    
     # Get model
     # Create the input layer
     input_l = keras.Input(
@@ -777,7 +778,10 @@ def custom_train_loop_tensorflow(
         # the gradients of the trainable variables with respect to the loss.
         grads = tape.gradient(loss_value, model.trainable_weights)
         # Apply the masks to zero out gradients of non existing connections.
-        grads_masked = [tf.math.multiply(g, m) for g, m in zip(grads, masks)]
+        if masks is not None:
+            grads_masked = [tf.math.multiply(g, m) for g, m in zip(grads, masks)]
+        else:
+            grads_masked = grads
         # Check that updated gradients shape is the same as gradients.
         if len(grads) != len(grads_masked):
             raise ValueError("Gradients are unequal in size after masking.")
@@ -1063,7 +1067,10 @@ def custom_train_loop_torch(
             gradients = [v.value.grad for v in trainable_weights]
 
             # Modify the gradients with the masks
-            gradients_ = [print(type(gradients[i]), type(masks[i])) and torch.mul(gradients[i], masks[i]) for i in range(len(gradients))]
+            if masks is not None:
+                gradients_ = [torch.mul(gradients[i], masks[i]) for i in range(len(gradients))]
+            else:
+                gradients_ = gradients
             # Check that updated gradients shape is the same as gradients.
             if len(gradients) != len(gradients_):
                 raise ValueError("Gradients are unequal in size after masking.")
@@ -1270,7 +1277,10 @@ def custom_train_loop_jax(
             trainable_variables, non_trainable_variables, metric_variables, x, y
         )
         # Modify grads and multiply with masks
-        grads_masked = [g*m for g, m in zip(grads, masks)]
+        if masks is not None:
+            grads_masked = [g*m for g, m in zip(grads, masks)]
+        else:
+            grads_masked = grads
         # Check that updated gradients shape is the same as gradients.
         if len(grads) != len(grads_masked):
             raise ValueError("Gradients are unequal in size after masking.")
