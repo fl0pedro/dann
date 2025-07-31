@@ -3,13 +3,16 @@
 """
 Created on Fri May 22 10:39:08 2020.
 
-@author: spiros
+@author: spiros and florian
 """
 import numpy as np
 import scipy.ndimage as scn
+from typing import Literal, Callable
+from numpy.typing import NDArray
 
-
-def nb_vals(matrix, indices, size=1, opt=None):
+# TODO: come up with a better fn name
+# TODO: this isn't used to its all capbaility, i.e., not efficient.
+def nb_vals(shape: tuple[int, int], indices: list[tuple[int, int]], size: int=1, opt: Literal["extend"] | None = None) -> list[tuple[int, int]]:
     """
     https://stackoverflow.com/questions/49210506/how-to-get-all-the-values-of-neighbours-around-an-element-in-matrix.
 
@@ -20,24 +23,54 @@ def nb_vals(matrix, indices, size=1, opt=None):
 
     Returns
     -------
-    nb_indices : indices of the neighborhood.
-
+    Array : flat indices of the neighborhood.
+    
     """
-    indices_ = tuple(np.transpose(np.atleast_2d(indices)))
-    arr_shape = matrix.shape
-    dist = np.ones(arr_shape)
-    dist[indices_] = 0
-    dist = scn.distance_transform_cdt(dist, metric='chessboard')
+    dist = np.ones(shape)
+    dist[indices] = 0
+    dist = scn.distance_transform_cdt(dist)
 
-    if opt == 'extended':
-        nb_indices = np.transpose(np.nonzero(dist == size))
+    if opt == "extend":
+        nb_mask = dist == size
     else:
-        nb_indices = np.transpose(np.nonzero(dist <= size))
+        nb_mask = dist <= size
+    
+    return np.nonzero(nb_mask)
 
-    return nb_indices
+def one_to_one_idxs(inputs: int, outputs: int, rng) -> list[tuple[int, int]]:
+    # TODO docs and typing for rng
+    if inputs < outputs:
+        idxs = rng.integers(0, inputs, outputs)
+    else:
+        idxs = rng.choice(inputs, outputs)
 
+    return [idxs[i]*i for i in range(outputs)]
 
-def random_connectivity(inputs, outputs, opt='random', conns=None, seed=None):
+def random_idxs(inputs: int, outputs: int, conns: int, rng):
+    # TODO docs and typing for rng
+    size = inputs*outputs
+    
+    if conns is None or conns <= 0 or not isinstance(conns, int):
+        raise ValueError("Specify `conns` as positive integer.")
+    if conns > size: 
+        raise ValueError("`conns` must be lower than `size=input*output`")
+
+    return rng.choice(size, conns, replace=False)
+
+def constant_idxs(inputs: int, outputs: int, conns: int, rng):
+    # TODO docs and typing for rng
+    
+    if conns is None or conns <= 0 or not isinstance(conns, int):
+        raise ValueError("Specify `conns` as positive integer.")
+    if conns > inputs:
+        raise ValueError("`conns` must be lower than `input`")
+
+    return [
+        rng.choice(inputs, conns, replace=False)*i
+        for i in range(outputs)
+    ]
+
+def random_connectivity(inputs: int, outputs: int, opt: Literal["one_to_one", "random", "constant"] = "random", conns: int = None, seed: int = None):
     """
     Connectivity matrix between two layers.
 
@@ -47,7 +80,7 @@ def random_connectivity(inputs, outputs, opt='random', conns=None, seed=None):
         Number of input nodes.
     outputs : int
         Number of output nodes.
-    opt : str, optional
+    opt : Literal["one_to_one", "random", "constant"], optional
         Method of randomness. The default is 'random'.
     conns : int, optional
         Explicit set of number of connections. The default is None.
@@ -65,73 +98,22 @@ def random_connectivity(inputs, outputs, opt='random', conns=None, seed=None):
         The connectivity matrix.
 
     """
-    # set the random Generator
     rng = np.random.default_rng(seed)
 
-    mask = np.zeros(shape=(inputs, outputs))
-    if opt == 'one_to_one':
-        idxs = rng.integer(
-            low=0,
-            high=mask.shape[0],
-            size=mask.shape[1]
-        )
-        for i in range(mask.shape[1]):
-            mask[idxs[i], i] = 1
-
-    elif opt == 'random':
-        if conns is None or conns <= 0 or not isinstance(conns, int):
-            raise ValueError('Specify `conns` as positive integer. '
-                             '`conns` was `None` or negative or float')
-        elif conns > mask.size:
-            raise ValueError('Specify `conns` as positive integer lower '
-                             'than `inputs*outputs`')
-        # nodes receive a random number of connections
-        indices = rng.choice(inputs*outputs, conns, replace=False)
-        mask.flat[indices] = 1
-
-    elif opt == 'constant':
-        if conns is None or conns <= 0 or not isinstance(conns, int):
-            raise ValueError('Specify `conns` as positive integer. '
-                             '`conns` was `None` or negative or float')
-        if conns > mask.shape[0]:
-            raise ValueError('`conns` cannot be more than input nodes.')
-        # all nodes receive the same number of connections
-        for i in range(mask.shape[1]):
-            idx = rng.choice(mask.shape[0], conns, replace=False)
-            mask[idx, i] = 1
+    if opt == "one_to_one":
+        idxs = one_to_one_idxs(inputs, outputs, rng)
+    elif opt == "random":
+        idxs = random_idxs(inputs, outputs, conns, rng)
+    elif opt == "constant":
+        idxs = constant_idxs(inputs, outputs, conns, rng)
     else:
-        raise ValueError('Not a valid option. `opt` should take the values'
-                         '`one_to_one`, `random` or `constant`')
-
+        raise ValueError("Not a valid option. `opt` should take the values`one_to_one`, `random` or `constant`")
+    
+    mask = np.zeros(shape=(inputs, outputs))
+    mask.flat[idxs] = 1
     return mask.astype('int')
 
-
-def choose_centers(possible_values, nodes, seed):
-    """
-    Choose coordinates in the image.
-
-    Parameters
-    ----------
-    possible_values : list
-        List of possible pixels to allocate.
-    nodes : int
-        The number of nodes to allocate centers to.
-    seed : int, optional
-        A seed to initialize the BitGenerator. The default is None.
-
-    Returns
-    -------
-    numpy.ndarray
-        The center of each node in `nodes`.
-
-    """
-    # set the random Generator
-    rng = np.random.default_rng(seed)
-
-    return rng.choice(possible_values, nodes)
-
-
-def allocate_synapses(nb, matrix, num_of_synapses, num_channels=1, seed=None):
+def allocate_synapses(shape, nb, num_of_synapses, num_channels=1, seed=None, flat=True):
     """
     The allocation of synapses on dendrites.
 
@@ -159,69 +141,39 @@ def allocate_synapses(nb, matrix, num_of_synapses, num_channels=1, seed=None):
         The connectivity of one dendrite (each receptive field).
 
     """
-    # set the random Generator
     rng = np.random.default_rng(seed)
 
-    # Allocate inputs to synapses
-    M, N = matrix.shape
-    mask = np.zeros((M, N))
+    mask = np.zeros(shape)
+    
+    x_idxs = []
+    y_idxs = []
+    length = 0
 
-    syn_indices = nb_vals(matrix, list(nb))
+    for i in range(max(shape)): # do while (can't be greater than max shape) 
+        x, y = nb_vals(mask.shape, nb, size=i, opt="extend")
 
-    # Extended neighborhood if syns are missing
-    if len(syn_indices) < num_of_synapses:
-        diff = num_of_synapses - len(syn_indices)
-        extra_syns = nb_vals(matrix, nb, size=2, opt='extended')
+        x_idxs.extend(x)
+        y_idxs.extend(y)
+        length += len(x)
+        if length >= num_of_synapses: # condition for the do while
+            break
 
-        cnt = 3
-        while diff > len(extra_syns):
-            extra_syns_more = nb_vals(
-                matrix,
-                nb,
-                size=cnt,
-                opt='extended'
-            )
-            extra_syns = np.concatenate(
-                (extra_syns, extra_syns_more)
-            )
-            cnt += 1
-            if diff <= len(extra_syns):
-                break
-
-        added = extra_syns[
-            rng.choice(
-                extra_syns.shape[0],
-                diff,
-                replace=False
-            )
-        ]
-        syn_indices_ = np.concatenate((syn_indices, added))
-    elif len(syn_indices) > num_of_synapses:
-        # Subsample at random
-        idx = rng.choice(
-            syn_indices.shape[0],
-            num_of_synapses,
-            replace=False
-        )
-        syn_indices_ = syn_indices[idx]
-    else:
-        syn_indices_ = np.copy(syn_indices)
-
-    if len(syn_indices_) != num_of_synapses:
-        raise ValueError('Something is wrong!')
-
-    row_indices = [x[0] for x in syn_indices_]
-    col_indices = [x[1] for x in syn_indices_]
-    mask[row_indices, col_indices] = 1
+    synapse_idxs = (x_idxs, y_idxs)
+   
+    if length > num_of_synapses:
+        synapse_idxs = tuple(rng.choice(synapse_idxs, num_of_synapses, replace=False, axis=1))
+    
+    mask[synapse_idxs] = 1
+    
     if num_channels > 1:
-        mask = np.expand_dims(mask, axis=2)
-        mask = np.tile(mask, num_channels)
-
-    return mask.reshape(M*N*num_channels)
+        mask = np.tile(mask[..., np.newaxis], num_channels)
+    
+    return mask.reshape(-1) if flat else mask
+    
 
 
 def make_mask_matrix(
-    centers_ids, matrix, dendrites, somata,
+    center_idxs, shape, dendrites, somata,
     num_of_synapses, num_channels=1,
     rfs_type='somatic', seed=None
     ):
@@ -252,89 +204,87 @@ def make_mask_matrix(
         The connectivity matrix.
 
     """
+    # TODO: rng is kind of out of place here, it would be nice to fix nb_vals, and allocate_synapses such that it finds the correct neighbors for each in one go.
     rng = np.random.default_rng(seed)
+    # shouldn't the shape be (num_of_synapses[*dendrites], ...) where [] is for ref_type="somatic"
+    size = np.prod(shape)
+    mask = np.zeros((dendrites*somata, size*num_channels))
+
+    if rfs_type == "somatic":
+        # for center in center_idxs: ... # serial solution, guarantees each soma has the same number of dendrites.
+        somatic_mask = allocate_synapses(shape, center_idxs, somata*dendrites, num_channels, flat=False)
+        center_idxs = np.nonzero(somatic_mask)
+
+    if size < dendrites*somata: # not enough centers
+        center_idxs = rng.choice(center_idxs, dendrites*somata, axis=1)
+   
+    for i, center in enumerate(np.transpose(center_idxs)):
+        mask[i, :] = allocate_synapses(shape, center, num_of_synapses, num_channels)
+
+    return mask
+
+def binary_uniform(max_val: int, size: int, shape: tuple[int, int], split: float, prob: float, rng):
+    res = np.empty(size)
+    p = rng.random(size)
+    res[p > prob]
+    somata1 = sum(p > prob)  # outside of attention site
+    somata2 = sum(p < prob)  # inside attention site
+
+    # image center coordinates
+    h, w = shape
+    # this looks wrong
+    w1, w2 = h//2 - h//4, h//2 + h//4
+    h1, h2 = w//2 - w//4, w//2 + w//4
+    # Random allocation outside of the middle of the image
+    centers_w = rng.choice(
+        list(range(w1)) + list(range(w2, w)),
+        somata1,
+    )
+    centers_h = rng.choice(
+        list(range(h1)) + list(range(h2, h)),
+        somata1,
+    )
+    centers_ids1 = list(zip(centers_w, centers_h))
+
+    # Random allocation in the middle of the image
+    centers_w = rng.choice(range(w1, w2), somata2)
+    centers_h = rng.choice(range(h1, h2), somata2)
+    centers_ids2 = list(zip(centers_w, centers_h))
+
+    if centers_ids1 is not None and centers_ids2 is not None:
+        centers_ids = centers_ids1 + centers_ids2
+    elif centers_ids1 is None and centers_ids2 is not None:
+        centers_ids = centers_ids2
+    elif centers_ids1 is not None and centers_ids2 is None:
+        centers_ids = centers_ids1
+
+    return center_idxs
+
+# bbox = (x, y, len_x, len_y)
+def generate_idxs(fn: Callable[(int, int), NDArray], shape, rng, fn_kws: dict | tuple[dict, dict] = None, size=1, bbox: tuple[int, int, int, int] | None = None):
+    max_x, max_y = shape
+
+    if fn_kws is None:
+        fn_kws = {}
+
+    if bbox is None:
+        bbox = (0, 0, max_x, max_y)
     
-    M, N = matrix.shape
-    mask_final = np.zeros((dendrites*somata, matrix.size*num_channels))
-    counter = 0
+    assert all(x >= 0 for x in bbox), "All entries of the bounding box must be positive"
+    x, y = min(bbox[0], max_x), min(bbox[1], max_y)
+    len_x, len_y = min(bbox[2], max_x-x), min(bbox[3], max_y-y)
 
-    if rfs_type == 'somatic':
-        # Loop for each soma with center--> center of the receptive field
-        for center in centers_ids:
+    # NOTE: fn must handle value 0 and return intiger arrays!
+    
+    if isinstance(fn_kws, tuple):
+        center_idxs = (x + fn(len_x, size, **fn_kws[0]), y + fn(len_y, size, **fn_kws[1]))
+    else:
+        flat_bbox_idxs = fn(len_x*len_y, size, **fn_kws)
+        center_idxs = (x + flat_bbox_idxs%len_x, y + flat_bbox_idxs//len_x)
+    
+    return center_idxs 
 
-            # Find the centers of the neighborhood
-            nb_indices = nb_vals(matrix, list(center))
-
-            # if dendrites of one soma are less than the size of the neighborhood
-            # pick random centers within the neighborhood
-            if dendrites < len(nb_indices):
-                nb_indices = nb_indices[
-                    rng.choice(
-                        range(len(nb_indices)),
-                        dendrites,
-                        replace=False
-                    )
-                ]
-            # if dendrites of one soma are more than the size of the neighborhood
-            # choose random centers of an extended neighborhood
-            # (+2 pixel from center)
-            elif dendrites > len(nb_indices):
-                diff = dendrites - len(nb_indices)
-                extra_centers = nb_vals(matrix, center, size=2, opt='extended')
-
-                cnt = 3
-                while diff > len(extra_centers):
-                    extra_centers_more = nb_vals(
-                        matrix, center, size=cnt,
-                        opt='extended'
-                    )
-                    extra_centers = np.concatenate(
-                        (extra_centers, extra_centers_more)
-                    )
-                    cnt += 1
-                    if diff <= len(extra_centers):
-                        break
-
-                added = extra_centers[
-                    rng.choice(
-                        extra_centers.shape[0],
-                        diff,
-                        replace=False
-                    )
-                ]
-                nb_indices = np.concatenate((nb_indices, added))
-
-            # Allocate inputs to synapses
-            for nb in nb_indices:
-                mask_final[counter, :] = allocate_synapses(
-                    nb,
-                    matrix,
-                    num_of_synapses,
-                    num_channels=num_channels,
-                    seed=seed
-                )
-                counter += 1
-
-    elif rfs_type == 'dendritic':
-        # Loop for each dendrite with center--> center of the receptive field
-        # Allocate inputs to synapses
-        for center in centers_ids:
-            mask_final[counter, :] = allocate_synapses(
-                center,
-                matrix,
-                num_of_synapses,
-                num_channels=num_channels
-            )
-            counter += 1
-
-    return mask_final
-
-
-def receptive_fields(
-    matrix, somata, dendrites, num_of_synapses,
-    opt='random', rfs_type="somatic", step=None, prob=None,
-    num_channels=1, size_rfs=None, centers_ids=None, seed=None
-    ):
+def receptive_fields(shape, somata, dendrites, synapses, fn, typ="somatic", num_channels=1, rng=None, center_kws=None, center_idxs=None):
     """
     Construct Receptive Fields like connectivity.
 
@@ -379,106 +329,20 @@ def receptive_fields(
         The centroids of RFs.
 
     """
-    rng = np.random.default_rng(seed)
-    M, N = matrix.shape
-
-    if rfs_type == 'somatic':
+    if center_kws is None:
+        center_kws = {}
+    
+    if typ == "somatic":
         nodes = somata
-    elif rfs_type == 'dendritic':
+    elif typ == "dendritic":
         nodes = dendrites*somata
+    
+    if center_idxs is None:
+        center_idxs = generate_idxs(fn, shape, rng, size=nodes, **center_kws)
+   
+    mask_final = make_mask_matrix(center_idxs, shape, dendrites, somata, synapses, num_channels, typ, rng)
 
-    if not centers_ids:
-        if opt == 'random':
-            # Random allocation
-            centers_w = choose_centers(range(M), nodes, seed)
-            centers_h = choose_centers(range(N), nodes, seed)
-            centers_ids = [(x, y) for x, y in zip(centers_w, centers_h)]
-        elif opt == 'random_limited':
-            if size_rfs is None:
-                raise ValueError('`size_rfs` should be defined under `random_limited` '
-                                 'and should be a positive integer. '
-                                 'Found `None`')
-            # Random allocation -- limited sampling
-            rnd_pixels = rng.integer(
-                low=0,
-                high=matrix.shape[0],
-                size=size_rfs
-            )
-            centers_w = choose_centers(rnd_pixels, nodes, seed)
-            centers_h = choose_centers(rnd_pixels, nodes, seed)
-            centers_ids = [(x, y) for x, y in zip(centers_w, centers_h)]
-
-        elif opt == 'semirandom':
-            if prob is None:
-                raise ValueError('`prob` should be defined under `semirandom` '
-                                 'and should be a positive float in [0,1]. '
-                                 'Found `None`')
-            centers_ids1 = None
-            centers_ids2 = None
-            p = rng.random(nodes)
-            somata1 = sum(p > prob)  # outside of attention site
-            somata2 = sum(p < prob)  # inside attention site
-
-            # image center coordinates
-            w1, w2 = M//2 - M//4, M//2 + M//4
-            h1, h2 = N//2 - N//4, N//2 + N//4
-            # Random allocation outside of the middle of the image
-            centers_w = choose_centers(
-                list(range(w1)) + list(range(w2, M)),
-                somata1,
-                seed,
-            )
-            centers_h = choose_centers(
-                list(range(h1)) + list(range(h2, N)),
-                somata1,
-                seed,
-            )
-            centers_ids1 = [(x, y) for x, y in zip(centers_w, centers_h)]
-
-            # Random allocation in the middle of the image
-            centers_w = choose_centers(range(w1, w2), somata2, seed)
-            centers_h = choose_centers(range(h1, h2), somata2, seed)
-            centers_ids2 = [(x, y) for x, y in zip(centers_w, centers_h)]
-
-            if centers_ids1 is not None and centers_ids2 is not None:
-                centers_ids = centers_ids1 + centers_ids2
-            elif centers_ids1 is None and centers_ids2 is not None:
-                centers_ids = centers_ids2
-            elif centers_ids1 is not None and centers_ids2 is None:
-                centers_ids = centers_ids1
-
-        elif opt == 'serial':
-            if step is None:
-                raise ValueError('`step` should be defined under `serial` '
-                                 'and should be a positive integer.'
-                                 'Found `None`')
-
-            xv, yv = np.meshgrid(
-                range(M),
-                range(N),
-                sparse=False,
-                indexing='ij'
-            )
-            centers_ids = [[i, j] for i, j in zip(list(xv.flatten()),
-                                                  list(yv.flatten()))]
-            L = len(centers_ids)
-
-            list_of_indices = list(np.arange(start=0, stop=L, step=step))
-            centers_ids = [centers_ids[i] for i in range(len(centers_ids))
-                           if i in list_of_indices]
-
-    mask_final = make_mask_matrix(
-        centers_ids,
-        matrix,
-        dendrites,
-        somata,
-        num_of_synapses,
-        num_channels,
-        rfs_type,
-        seed
-    )
-
-    return (mask_final.T.astype('int'), centers_ids)
+    return mask_final.astype("int").T, center_idxs
 
 
 def connectivity(inputs, outputs):
@@ -501,6 +365,7 @@ def connectivity(inputs, outputs):
     ------
     ValueError
         If inputs or outputs are non-positive, or if inputs are not divisible by outputs.
+ 
     """
     if outputs <= 0:
         raise ValueError("Number of outputs must be greater than zero.")

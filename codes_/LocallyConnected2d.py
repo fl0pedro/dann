@@ -6,7 +6,7 @@ import keras
 import numpy as np
 from typing import Iterable
 
-class LocallyConnected2D(layers.Layer):
+class LocallyConnected2D(layers.Layer): # TODO try different learning rates and inits.
     def __init__(self, in_channels, out_channels, input_shape,
                  kernel_size, stride, bias=True, **kwargs):
         super().__init__(**kwargs)
@@ -29,14 +29,14 @@ class LocallyConnected2D(layers.Layer):
         self.weight_shape = (out_channels, in_channels, oh, ow, kh * kw)
 
     def build(self, input_shape):
-        self.weight = self.add_weight(
+        self.weight = self.add_weight( # initialize differently
             shape=self.weight_shape,
             initializer=initializers.RandomNormal(stddev=0.05),
             trainable=True,
             name='weight'
         )
         if self.bias:
-            self.bias = self.add_weight(
+            self.bias = self.add_weight( # different initializations?
                 shape=self.output_shape,
                 initializer='zeros',
                 trainable=True,
@@ -78,6 +78,7 @@ class LocallyConnected2D(layers.Layer):
 
         ph = kh // 2
         pw = kw // 2
+        print(x.shape)
         x = tf.pad(x, [[0, 0], [ph, ph], [pw, pw], [0, 0]])
 
         patches = tf.image.extract_patches(

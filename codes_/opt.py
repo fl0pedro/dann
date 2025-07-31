@@ -408,10 +408,11 @@ def make_masks(
 
     """
     masks = []
+    rng = np.random.default_rng(seed)
     for i in range(num_layers):
         if i == 0:
             # first layer --> create a matrix with input dimensions.
-            matrix = np.zeros((img_width, img_height))
+            matrix = np.zeros((img_width, img_height), dtype=int)
         else:
             # for the rest dendrosomatic layers the input is a `square` form of
             # the previous layer's somata.
@@ -421,24 +422,18 @@ def make_masks(
                 matrix = np.zeros((divisors[ix], divisors[ix - 1]))
             else:
                 matrix = np.zeros((divisors[ix], divisors[ix]))
-
+        
         # when RFs are enabled!
         if rfs:
+            assert rfs_mode == "random" # currently hard coded as nothing else is used.
             mask_s_d, centers = receptive_fields(
-                matrix, somata=soma[i],
-                dendrites=dends[i],
-                num_of_synapses=synapses,
-                opt=rfs_mode,
-                rfs_type=rfs_type,
-                prob=0.7,
-                num_channels=channels if i == 0 else 1,
-                seed=seed
+                matrix.shape, soma[i], dends[i], synapses, 
+                rng.choice, rfs_type, channels if i == 0 else 1, rng
             )
         else:
             # if no RFs are enabled use random connectivity (like `sparse`)
             inputs_size = matrix.size
             factor = channels if i == 0 else 1
-
             # for soma to the next dendrites (if more than two layers)
             mask_s_d = random_connectivity(
                 inputs=inputs_size*factor,
@@ -503,7 +498,7 @@ def get_ordered_model_names() -> list[str]:
         'dend_ann_random', 'dend_ann_global_rfs', 'dend_ann_local_rfs', 
         'vanilla_ann', 'vanilla_ann_random', 'vanilla_ann_global_rfs', 'vanilla_ann_local_rfs', 
         'sparse_ann', 'sparse_ann_global_rfs', 'sparse_ann_local_rfs', 
-        'dend_ann_all_to_all', 'sparse_ann_all_to_all'
+        'dend_ann_all_to_all', 'sparse_ann_all_to_all', 'locally_connected'
     ]
 
 def get_model_idx(name: str) -> int:
@@ -567,7 +562,7 @@ def get_model_name(
 def get_model(
         input_shape, num_layers, dends, soma,
         num_classes, fname_model, relu_slope=0.1,
-        dropout=False, rate=0.0, backend="torch", device="cpu"):
+        dropout=False, rate=0.0, backend="torch", device="cpu", masks=None):
     """
     Build the model.
 
@@ -599,7 +594,17 @@ def get_model(
         The compiled model. Run `model.summary()` to see its properties.
     """
     keras, _ = init_keras(backend, "1" if device == "gpu" else "")
+    if masks is None:
+        Dense = keras.layers.Dense
+    else:
+        from masked_dense import MaskedDense
+        Dense = MaskedDense
+        # iterator/generator + preprocess to remove any bias masks :p
+        mask = (m for m in masks if m.ndim == 2)    
     
+    def get_next_kws():
+        return {"mask": next(mask)} if masks is not None else {} 
+   
     # Get model
     # Create the input layer
     input_l = keras.Input(
@@ -608,14 +613,15 @@ def get_model(
     )
     # First hidden dendritic and somatic layer
     # Dendritic layer
-    dend_l = keras.layers.Dense(
+    dend_l = Dense(
         dends[0]*soma[0],
-        name="dend_1"
+        name="dend_1",
+        **get_next_kws()
     )(input_l)
     # Dendritic activation function
     dend_l = keras.layers.ReLU(
         negative_slope=relu_slope,
-        name="dend_1_relu"
+        name="dend_1_relu",
     )(dend_l)
     if dropout:
         dend_l = keras.layers.Dropout(
@@ -623,9 +629,10 @@ def get_model(
             name="dend_1_dropout"
         )(dend_l)
     # Somatic layer
-    soma_l = keras.layers.Dense(
+    soma_l = Dense(
         soma[0],
-        name="soma_1"
+        name="soma_1",
+        **get_next_kws()
     )(dend_l)
     # Somatic activation function
     soma_l = keras.layers.ReLU(
@@ -641,9 +648,10 @@ def get_model(
     # For loop for more layers
     for j in range(1, num_layers):
         # Dendritic layer
-        dend_l = keras.layers.Dense(
+        dend_l = Dense(
             dends[j]*soma[j],
-            name=f"dend_{j+1}"
+            name=f"dend_{j+1}",
+            **get_next_kws()
         )(soma_l)
         # Activation function
         dend_l = keras.layers.ReLU(
@@ -656,9 +664,10 @@ def get_model(
                 name=f"dend_{j+1}_dropout"
             )(dend_l)
         # Somatic layer
-        soma_l = keras.layers.Dense(
+        soma_l = Dense(
             soma[j],
-            name=f"soma_{j+1}"
+            name=f"soma_{j+1}",
+            **get_next_kws()
         )(dend_l)
         # Activation function
         soma_l = keras.layers.ReLU(
@@ -685,7 +694,6 @@ def get_model(
     )
 
     return model
-
 
 def custom_train_loop_tensorflow(
         model, loss_fn, optimizer, masks, batch_size, num_epochs,

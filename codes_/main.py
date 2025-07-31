@@ -43,6 +43,7 @@ def parse_args(args: list[str] | None = None):
     parser.add_argument(
         "--backend", choices=["tensorflow", "torch", "jax", "tiny"], default="jax"
     )
+    parser.add_argument("--mask", action="store_true")
     return parser.parse_args(args)
 
 
@@ -124,18 +125,9 @@ def main(args: list[str] | None = None):
     if args.lr != 1e-3:
         run_tag += f"_lr_{args.lr}"
 
-    if args.model == 12:
-        fname_model = "LocallyConnected2D"
-    else:
-        fname_model = backend.get_model_name(
-            args.conventional,
-            args.rfs is not None,
-            args.sparse,
-            args.rfs,
-            "all_to_all" if args.all_to_all else None,
-        )
-        if args.drop_rate:
-            fname_model += f"_dropout_{args.drop_rate}"
+    fname_model = backend.get_model_name(idx=args.model)
+    if args.drop_rate:
+        fname_model += f"_dropout_{args.drop_rate}"
 
     print(
         f"\nModel: {fname_model}, trial: {args.trial}, layers: {args.num_layers}, "
@@ -213,16 +205,6 @@ def main(args: list[str] | None = None):
         masks = None
     else:
         input_shape = (img_width * img_height * channels,)
-        model = backend.dann(
-            input_shape,
-            args.num_layers,
-            dends,
-            soma,
-            num_classes,
-            fname_model=fname_model,
-            dropout=bool(args.drop_rate),
-            rate=args.drop_rate,
-        )
 
         masks = backend.make_masks(
             dends,
@@ -239,6 +221,36 @@ def main(args: list[str] | None = None):
             rfs_mode="random",
             seed=args.trial,
         )
+
+        model = backend.dann(
+            input_shape,
+            args.num_layers,
+            dends,
+            soma,
+            num_classes,
+            fname_model=fname_model,
+            dropout=bool(args.drop_rate),
+            rate=args.drop_rate,
+            masks=masks if args.mask else None
+        )
+
+        print((
+            dends,
+            soma,
+            args.nsyns,
+            args.num_layers,
+            img_width,
+            img_height,
+            num_classes,
+            channels,
+            args.conventional,
+            args.rfs is not None,
+            args.rfs,
+            "random",
+            args.trial,
+        ))
+
+
 
         # params = model.get_weights()
         # model.set_weights([p * m for p, m in zip(params, masks)])
@@ -267,7 +279,6 @@ def main(args: list[str] | None = None):
         
         pr = cProfile.Profile()
         pr.enable()
- 
         backend.train_loop(
             model,
             masks,
@@ -294,8 +305,10 @@ def main(args: list[str] | None = None):
     optimizer = backend.keras.optimizers.Adam(learning_rate=args.lr)
     loss_fn = backend.keras.losses.SparseCategoricalCrossentropy(from_logits=False)
 
+    print("deepcopy")
     model_untrained = copy.deepcopy(model)
-
+    
+    print("train")
     model, out = backend.train_loop(
         model,
         loss_fn,

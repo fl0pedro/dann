@@ -196,7 +196,7 @@ def train_loop(
             val_loss = get_loss(x_val, y_val).item()
             val_acc = get_acc(x_val, y_val).item()
             t.write(f"{step=} - val loss {val_loss:.4f}, val acc {val_acc:.2%}")
-
+        
     test_loss = get_loss(x_test, y_test).item()
     test_acc = get_acc(x_test, y_test).item()
     print(f"test loss {test_loss:.4f}, test acc {test_acc:.2%}")
