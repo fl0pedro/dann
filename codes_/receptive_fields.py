@@ -48,6 +48,8 @@ def one_to_one_idxs(inputs: int, outputs: int, rng) -> list[tuple[int, int]]:
 
 def random_idxs(inputs: int, outputs: int, conns: int, rng):
     # TODO docs and typing for rng
+    """
+    """
     size = inputs*outputs
     
     if conns is None or conns <= 0 or not isinstance(conns, int):
@@ -71,33 +73,7 @@ def constant_idxs(inputs: int, outputs: int, conns: int, rng):
     ]
 
 def random_connectivity(inputs: int, outputs: int, opt: Literal["one_to_one", "random", "constant"] = "random", conns: int = None, seed: int = None):
-    """
-    Connectivity matrix between two layers.
-
-    Parameters
-    ----------
-    inputs : int
-        Number of input nodes.
-    outputs : int
-        Number of output nodes.
-    opt : Literal["one_to_one", "random", "constant"], optional
-        Method of randomness. The default is 'random'.
-    conns : int, optional
-        Explicit set of number of connections. The default is None.
-    seed : int, optional
-        A seed to initialize the BitGenerator. The default is None.
-
-    Raises
-    ------
-    ValueError
-        conns positive int number < inputs*outputs.
-
-    Returns
-    -------
-    numpy.ndarray
-        The connectivity matrix.
-
-    """
+    # TODO docs and determine use of seed or rng
     rng = np.random.default_rng(seed)
 
     if opt == "one_to_one":
@@ -114,33 +90,7 @@ def random_connectivity(inputs: int, outputs: int, opt: Literal["one_to_one", "r
     return mask.astype('int')
 
 def allocate_synapses(shape, nb, num_of_synapses, num_channels=1, seed=None, flat=True):
-    """
-    The allocation of synapses on dendrites.
-
-    Parameters
-    ----------
-    nb : list
-        List of tuples with all pixels in neighborhood (w, h).
-    matrix : TYPE
-        DESCRIPTION.
-    num_of_synapses : int
-        The number of inputs per dendrite.
-    num_channels : int, optional
-        The number of channels of input images. The default is 1.
-    seed : int, optional
-        A seed to initialize the BitGenerator. The default is None.
-
-    Raises
-    ------
-    ValueError
-        DESCRIPTION.
-
-    Returns
-    -------
-    numpy.ndarray
-        The connectivity of one dendrite (each receptive field).
-
-    """
+    # TODO docs and determine use of seed
     rng = np.random.default_rng(seed)
 
     mask = np.zeros(shape)
@@ -177,33 +127,7 @@ def make_mask_matrix(
     num_of_synapses, num_channels=1,
     rfs_type='somatic', seed=None
     ):
-    """
-    Create the maks.
-
-    Parameters
-    ----------
-    centers_ids : list
-        The centroids of the RFs.
-    matrix : numpy.ndarray
-        Zero helper matrix.
-    somata : int
-        Number of somata.
-    dendrites : int
-        Number of dendrites per soma.
-    num_of_synapses : int
-        The number of inputs per dendrite.
-    num_channels : int, optional
-        The number of channels of input images. The default is 1.
-    rfs_type : str, optional
-        Type of receptive fields. local (`dendritic`) or global (`somatic`).
-        The default is 'somatic'.
-
-    Returns
-    -------
-    mask_final : numpy.ndarray.
-        The connectivity matrix.
-
-    """
+    # TODO: docs and determine use of seed
     # TODO: rng is kind of out of place here, it would be nice to fix nb_vals, and allocate_synapses such that it finds the correct neighbors for each in one go.
     rng = np.random.default_rng(seed)
     # shouldn't the shape be (num_of_synapses[*dendrites], ...) where [] is for ref_type="somatic"
@@ -224,6 +148,8 @@ def make_mask_matrix(
     return mask
 
 def binary_uniform(max_val: int, size: int, shape: tuple[int, int], split: float, prob: float, rng):
+    # TODO: finish (not used though)
+    # TODO: docs
     res = np.empty(size)
     p = rng.random(size)
     res[p > prob]
@@ -262,6 +188,7 @@ def binary_uniform(max_val: int, size: int, shape: tuple[int, int], split: float
 
 # bbox = (x, y, len_x, len_y)
 def generate_idxs(fn: Callable[(int, int), NDArray], shape, rng, fn_kws: dict | tuple[dict, dict] = None, size=1, bbox: tuple[int, int, int, int] | None = None):
+    # TODO docs
     max_x, max_y = shape
 
     if fn_kws is None:
@@ -285,50 +212,7 @@ def generate_idxs(fn: Callable[(int, int), NDArray], shape, rng, fn_kws: dict | 
     return center_idxs 
 
 def receptive_fields(shape, somata, dendrites, synapses, fn, typ="somatic", num_channels=1, rng=None, center_kws=None, center_idxs=None):
-    """
-    Construct Receptive Fields like connectivity.
-
-    Parameters
-    ----------
-    matrix : numpy.ndarray
-        Zero helper matrix.
-    somata : int
-        Number of somata.
-    dendrites : int
-        Number of dendrites per soma.
-    num_of_synapses : int
-        The number of inputs per dendrite.
-    opt : str, optional
-        Random or semirandom allocation of centroids. The default is 'random'.
-    rfs_type : str, optional
-        Type of receptive fields. local (`dendritic`) or global (`somatic`).
-        The default is 'somatic'.
-    step : TYPE, optional
-        DESCRIPTION. The default is None.
-    prob : TYPE, optional
-        DESCRIPTION. The default is None.
-    num_channels : TYPE, optional
-        DESCRIPTION. The default is 1.
-    size_rfs : int, optional
-        DESCRIPTION. The default is None.
-    centers_ids : list, optional
-        DESCRIPTION. The default is None.
-    seed : int, optional
-        A seed to initialize the BitGenerator. The default is None.
-
-    Raises
-    ------
-    ValueError
-        DESCRIPTION.
-
-    Returns
-    -------
-    numpy.ndarray
-        The connectivity matrix.
-    centers_ids : list
-        The centroids of RFs.
-
-    """
+    # TODO: docs
     if center_kws is None:
         center_kws = {}
     
@@ -346,27 +230,7 @@ def receptive_fields(shape, somata, dendrites, synapses, fn, typ="somatic", num_
 
 
 def connectivity(inputs, outputs):
-    """
-    Structured connectivity between layer i and layer i+1 nodes.
-
-    Parameters
-    ----------
-    inputs : int
-        Number of nodes in i-th layer.
-    somata : int
-        Number of nodes in (i+1)-th layer.
-
-    Returns
-    -------
-    connectivity_matrix : numpy.ndarray [int]
-        The connectivity matrix between inputs and outputs.
-    
-    Raises
-    ------
-    ValueError
-        If inputs or outputs are non-positive, or if inputs are not divisible by outputs.
- 
-    """
+    # TODO docs
     if outputs <= 0:
         raise ValueError("Number of outputs must be greater than zero.")
     if inputs <= 0:
