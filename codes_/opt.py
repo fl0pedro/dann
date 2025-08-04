@@ -12,7 +12,7 @@ import struct
 import numpy as np
 from functools import cache
 
-from receptive_fields import connectivity
+from receptive_fields import structured_connectivity
 from receptive_fields import receptive_fields
 from receptive_fields import random_connectivity
 
@@ -436,27 +436,27 @@ def make_masks(
             factor = channels if i == 0 else 1
             # for soma to the next dendrites (if more than two layers)
             mask_s_d = random_connectivity(
-                inputs=inputs_size*factor,
-                outputs=soma[i]*dends[i],
+                inputs_size*factor,
+                soma[i]*dends[i],
+                rng,
                 conns=synapses*soma[i]*dends[i],
-                seed=seed,
             )
         masks.append(mask_s_d)
         # create a mask with `ones` for biases
         masks.append(np.ones((mask_s_d.shape[1], )).astype('int'))
-        # Create structured connectivity if not `sparse`,
+        # Create structured_connectivity if not `sparse`,
         # else random (i.e., sparse).
         if not sparse:
-            mask_d_s = connectivity(
+            mask_d_s = structured_connectivity(
                 inputs=dends[i]*soma[i],
                 outputs=soma[i]
             )
         else:
             mask_d_s = random_connectivity(
-                inputs=dends[i]*soma[i],
-                outputs=soma[i],
+                dends[i]*soma[i],
+                soma[i],
+                rng,
                 conns=dends[i]*soma[i],
-                seed=seed,
             )
         # Append the masks
         masks.append(mask_d_s)
@@ -464,7 +464,7 @@ def make_masks(
         masks.append(np.ones((mask_d_s.shape[1], )).astype('int'))
 
     # If vanilla ANN --> re-write the masks with ones
-    # for vanilla ANN all-to-all connectivity and RFs
+    # for vanilla ANN all-to-all structured connectivity and RFs
     if conventional:
         if rfs or sparse:
             # vanilla ANN with random, sparse inputs, or RFs
