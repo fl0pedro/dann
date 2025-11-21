@@ -7,12 +7,14 @@ Created on Tue May 18 12:00:15 2021.
 
 import os
 import argparse
-import pickle
 import copy
+import json
 from optax import adamw
 from optax.losses import softmax_cross_entropy_with_integer_labels
 import opt_jax
-import jax.random as jrand
+import jax
+import jax.numpy as jnp
+import jax.random as jr
 
 def smart_parse_args(args: list[str] | None = None):
     parser = argparse.ArgumentParser()
@@ -61,20 +63,20 @@ def main(args: list[str] | None = None):
     opt_jax.sync_model(config, dataset_info) # config is changed in place.
     unique_model_name = opt_jax.unique_model_name(config)
 
-    key = jrand.PRNGKey(config.trial)
+    key = jr.PRNGKey(config.trial)
 
     if config.dirname:
         result_files = f"{config.dirname}/*_{unique_model_name}.pkl"
 
-        if result_files.exists() and not config.force:
+        if os.path.isfile(result_files) and not config.force:
             raise FileExistsError(f"This run has already been recorded: {result_files}")
 
-    model, *params = opt_jax.model(config)
+    key, model, *params = opt_jax.model(key, config)
 
     optimizer = adamw(config.lr)
     loss_fn = softmax_cross_entropy_with_integer_labels
 
-    untrained_model = copy.deepcopy(model) # change this to params
+    untrained_params = copy.deepcopy(params)
     
     params, res = opt_jax.train_loop(key,
         model, params, dataloader, loss_fn, optimizer,
@@ -84,14 +86,17 @@ def main(args: list[str] | None = None):
 
     if config.dirname:
         os.makedirs(config.dirname, exist_ok=True)
-        with open(f"untrained_{unique_model_name}.pkl", "wb") as f:
-            pickle.dump(untrained_model, f, protocol=pickle.HIGHEST_PROTOCOL)
+        with open(f"{config.dirname}/untrained_{unique_model_name}.pkl", "wb") as f:
+            for x in jax.tree.leaves(untrained_params):
+                jnp.save(f, x)
         with open(f"trained_{unique_model_name}.pkl", "wb") as f:
-            pickle.dump(model, f, protocol=pickle.HIGHEST_PROTOCOL)
+            for x in jax.tree.leaves(params):
+                jnp.save(f, x)
         with open(f"result_{unique_model_name}.pkl", "wb") as f:
-            pickle.dump(res, f, protocol=pickle.HIGHEST_PROTOCOL)
+            json.dump(res, f)
         print(f"\nResults saved: {config.dirname}/*_{unique_model_name}.pkl")
 
+    return unique_model_name, res
 
 if __name__ == "__main__":
     main()

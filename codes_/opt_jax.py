@@ -38,11 +38,17 @@ def unique_model_name(config):
     if config.drop_rate: 
         unique_vals += [f"dropout_{config.drop_rate}"]
 
+    if config.sigma:
+        unique_vals += f"noise_{config.sigma}"
+
     # postfix
-    unique_vals += [f"noise_{config.sigma}", str(config.trial)]
+    unique_vals += [str(config.trial)]
     return "_".join(unique_vals)
 
 def update_dends_and_soma(config):
+    if len(config.nsyns) == 1 and config.layers > 1:
+        config.nsyns *= config.layers
+
     if len(config.dends) == 1 and config.layers > 1:
         config.dends *= config.layers # constant size of dends
 
@@ -63,6 +69,8 @@ def update_model_id_and_name(config): # make sure defaults don't override custom
         'vanilla_ann', 'vanilla_ann_random', 'vanilla_ann_global_rfs', 'vanilla_ann_local_rfs', 
         'sparse_ann', 'sparse_ann_global_rfs', 'sparse_ann_local_rfs', 
         'dend_ann_all_to_all', 'sparse_ann_all_to_all', 'locally_connected'
+        'conv_global_rfs', 'conv_local_rfs', 'local_conv_global_rfs', 'local_conv_local_rfs',
+        'flexi_patches_global_rfs', 'flexi_patches_local_rfs'
     ]
 
     if config.model_id is None:
@@ -76,6 +84,9 @@ def update_dnn_values(config):
     backup_keys = {"rfs", "conventional", "sparse", "all_to_all"}
     # default values are None or False, therefore bool(v) == False in these cases
     backup = {k: v for k, v in vars(config).items() if k in backup_keys and v}
+
+    if config.model_id < 12:
+        config.original = True
     
     match config.model_id:
         case 0:
@@ -86,6 +97,7 @@ def update_dnn_values(config):
             config.rfs = "dendritic"
         case 3:
             config.conventional = True
+            config.original = False # don't mask.
         case 4:
             config.conventional = True
             config.sparse = True
@@ -111,11 +123,23 @@ def update_dnn_values(config):
             config.sparse = True
             config.all_to_all = True
         case 12:
-            ... # fully local conv network
+            config.rfs = "somatic"
         case 13:
-            ... # local conv as rfs
+            config.rfs = "dendritic"
+        case 14:
+            config.local = True
+            config.rfs = "somatic"
+        case 15:
+            config.local = True
+            config.rfs = "dendritic"
+        case 16:
+            config.flexi = True
+            config.rfs = "somatic"
+        case 17:
+            config.flexi = True
+            config.rfs = "dendritic"
         case _:
-            ... # shouldn't be able to reach this
+            raise ValueError
     
     for k in backup.keys():
         setattr(config, k, backup[k])
@@ -144,6 +168,9 @@ def dataloader(dataset, batch_size, data_dir, split):
     tf.config.set_visible_devices([], device_type='GPU')
 
     import tensorflow_datasets as tfds
+
+    if dataset == "fmnist":
+        dataset = "fashion_mnist"
 
     tf_split = [
         f"train[:{split:.0%}]", # train
@@ -309,7 +336,6 @@ def linear(key, input_size, output_size, mask=None):
     return apply, weight, bias
 
 def conv(key, input_shape, output_shape, kernel_shape, stride, local=False, padding="VALID", input_dilation=None, kernel_dilation=None):
-    print(input_shape, output_shape, kernel_shape, stride)
     if local:
         fused_input = input_shape[2] * kernel_shape[0] * kernel_shape[1]
         w_shape = (output_shape[0], output_shape[1], fused_input, output_shape[2])
@@ -392,7 +418,7 @@ def build_layer(key, config, i, current_shape):
         sd_f, sd_w, sd_b = conv(k1, current_shape, intermediate_shape, kernel_shape, stride, config.local)
 
         # dendrite -> soma
-        if config.rfs == "dendritic":
+        if config.rfs == "dendritic": # should be block diagonal*
             ds_f, ds_w, ds_b = linear(k2, prod(intermediate_shape), soma)
             current_shape = (soma,)
         else:
@@ -417,7 +443,7 @@ def build_layer(key, config, i, current_shape):
         sd_f, sd_w, sd_b = conv(k1, current_shape, intermediate_shape, kernel_shape, stride, config.local, "SAME")
         
         # dendrite -> soma
-        if config.rfs == "dendritic":
+        if config.rfs == "dendritic": # should be block diagonal*
             ds_f, ds_w, ds_b = linear(k2, prod(intermediate_shape)*soma, soma)
             current_shape = (soma,)
         else:
@@ -426,22 +452,21 @@ def build_layer(key, config, i, current_shape):
             ds_f, ds_w, ds_b = conv(k2, intermediate_shape, final_shape, kernel_shape, stride, config.local, "SAME")
             current_shape = final_shape
     else:
-        print(config.rfs, config.local, config.conventional)
         raise ValueError
 
     return key, LayerParams(sd_w, sd_b, ds_w, ds_b), LayerOps(sd_f, ds_f), current_shape
 
-def model(config):
+def model(key, config):
     params = []
     ops = []
     masks = []
 
-    key, mask_key = jr.split(jr.PRNGKey(config.trial))
+    key, mask_key = jr.split(key)
     
     if config.original:
         mask_list = get_masks(key, config)
-    elif config.improved:
-        index_list = get_indices(key, config)
+    # elif config.improved:
+    #     index_list = get_indices(key, config)
 
     current_shape = config.input_shape
 
@@ -501,7 +526,7 @@ def model(config):
 
         return f_final(x, *final_params)
 
-    return predict, params, final_params
+    return key, predict, params, final_params
 
 def sparse_categorical_accuracy_with_integer_labels(logits, labels):
     preds = jnp.argmax(logits, axis=-1)
@@ -529,6 +554,20 @@ def train_loop(key, model, params, dataloader, loss_fn, optimizer, batch_size, e
 
     opt_state = optimizer.init(params)
 
+    # TODO add more than just loss and accuracy.
+    res = {
+        "train": {
+            "loss": [],
+            "acc": []
+        }, "val": {
+            "loss": [],
+            "acc": []
+        }, "test": {
+            "loss": [],
+            "acc": []
+        }
+    }
+
     for epoch in range(epochs):
         local_loss = None
         local_acc = None
@@ -539,6 +578,9 @@ def train_loop(key, model, params, dataloader, loss_fn, optimizer, batch_size, e
             local_loss = inc_mean(local_loss, loss, i+1)
             local_acc = inc_mean(local_acc, acc, i+1)
             t.set_description(f"{epoch=}, loss={local_loss:,.4f}, acc={local_acc:.2%}")
+        
+        res["train"]["loss"].append(local_loss)
+        res["train"]["acc"].append(local_acc)
 
         if epoch % 5 == 4:
             local_loss = None
@@ -553,6 +595,9 @@ def train_loop(key, model, params, dataloader, loss_fn, optimizer, batch_size, e
                 local_acc = inc_mean(local_acc, acc, i+1)
                 t.set_description(f"validation, loss={local_loss:,.4f}, acc={local_acc:.2%}")
 
+            res["val"]["loss"].append(local_loss)
+            res["val"]["acc"].append(local_acc)
+
     local_loss = None
     local_acc = None
     for i, batch in (t:=tqdm(enumerate(dataloader["test"]), total=len(dataloader["test"]))):
@@ -564,6 +609,9 @@ def train_loop(key, model, params, dataloader, loss_fn, optimizer, batch_size, e
         local_loss = inc_mean(local_loss, loss, i+1)
         local_acc = inc_mean(local_acc, acc, i+1)
         t.set_description(f"test, loss={local_loss:,.4f}, acc={local_acc:.2%}")
+    
+    res["test"]["loss"].append(local_loss)
+    res["test"]["acc"].append(local_acc)
 
-    return params, outputs
+    return params, res
 
