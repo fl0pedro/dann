@@ -2,13 +2,91 @@
 # -*- coding: utf-8 -*-
 import jax
 import jax.numpy as jnp
-from jax import lax, vmap, random
+import jax.random as jr
+from jax import lax, vmap
 from functools import partial
 from typing import Literal
+from math import isqrt
+
+def squareish_shape(n):
+    limit = isqrt(n)
+    for h in range(limit, 0, -1):
+        if n % h == 0:
+            w = n // h
+            return (h, w)
+    return (1, n)
 
 def get_coords(shape: tuple[int, int]) -> tuple[jnp.ndarray, jnp.ndarray]:
     h, w, *_ = shape
     return jnp.meshgrid(jnp.arange(w), jnp.arange(h))
+
+def get_masks(key: jnp.ndarray, config) -> list[jnp.ndarray]:
+    if not config.original:
+        raise ValueError("Config must be set to original mode.")
+    
+    masks_list = []
+    
+    for i in range(config.layers):
+        key, k1, k2 = jr.split(key, 3)
+        
+        # input
+        if i == 0:
+            shape = config.input_shape[1:]
+            input_size = config.input_size
+            num_channels = config.input_shape[0]
+        else:
+            shape = squareish_shape(config.soma[i-1])
+            input_size = config.soma[i-1]
+            num_channels = 1
+
+        # synapse -> dendrite
+        if config.rfs:
+            mask_s_d, _ = receptive_fields(
+                k1, shape=shape, somata=config.soma[i], dendrites=config.dends[i],
+                synapses=config.nsyns, typ=config.rfs, num_channels=num_channels
+            )
+        else:
+            total_inputs = input_size * num_channels
+            total_units = config.soma[i] * config.dends[i]
+            
+            mask_s_d = random_connectivity(
+                k1, inputs=total_inputs, outputs=total_units,
+                opt="random", conns=config.nsyns * total_units
+            )
+
+        masks_list.append(mask_s_d)
+
+        # dendrite -> soma
+        total_dends = config.dends[i] * config.soma[i]
+        
+        if not config.sparse:
+            mask_d_s = structured_connectivity(
+                inputs=total_dends, outputs=config.soma[i]
+            )
+        else:
+            mask_d_s = random_connectivity(
+                k2, inputs=total_dends, outputs=config.soma[i],
+                opt="random", conns=total_dends
+            )
+            
+        masks_list.append(mask_d_s)
+
+    # conditionally remove masks
+    if config.conventional:
+        if config.rfs or config.sparse: # dend-soma is still block diag
+            for i, m in enumerate(masks_list):
+                if i % 2 != 0:
+                    masks_list[i] = jnp.ones_like(m)
+        else:
+            for i, m in enumerate(masks_list):
+                masks_list[i] = jnp.ones_like(m)
+
+    if config.all_to_all: # pdANN
+        for i, m in enumerate(masks_list):
+            if i % 2 == 0: 
+                masks_list[i] = jnp.ones_like(m)
+
+    return masks_list
 
 def random_connectivity(
     key: jnp.ndarray,
@@ -21,7 +99,7 @@ def random_connectivity(
     matrix = jnp.zeros((inputs, outputs), dtype=jnp.int32)
     
     if opt == "one_to_one":
-        p = random.permutation(key, jnp.arange(inputs))[:outputs]
+        p = jr.permutation(key, jnp.arange(inputs))[:outputs]
         row_idx = p
         col_idx = jnp.arange(outputs)
         return matrix.at[row_idx, col_idx].set(1)
@@ -29,7 +107,7 @@ def random_connectivity(
     elif opt == "random":
         if conns is None: 
             raise ValueError("conns required")
-        flat_idx = random.choice(key, inputs * outputs, shape=(conns,), replace=False)
+        flat_idx = jr.choice(key, inputs * outputs, shape=(conns,), replace=False)
         return matrix.flatten().at[flat_idx].set(1).reshape(inputs, outputs)
 
     elif opt == "constant":
@@ -37,11 +115,11 @@ def random_connectivity(
             raise ValueError("conns required")
         
         def sample_col(k):
-            idx = random.choice(k, inputs, shape=(conns,), replace=False)
+            idx = jr.choice(k, inputs, shape=(conns,), replace=False)
             col = jnp.zeros((inputs,), dtype=jnp.int32)
             return col.at[idx].set(1)
             
-        keys = random.split(key, outputs)
+        keys = jr.split(key, outputs)
         return vmap(sample_col)(keys).T # (Inputs, Outputs)
 
     else:
@@ -77,7 +155,7 @@ def binary_uniform(
     
     weights = weights / jnp.sum(weights)
     
-    flat_indices = random.choice(
+    flat_indices = jr.choice(
         key, H * W, shape=(size,), p=weights.flatten(), replace=False
     )
     
@@ -115,7 +193,7 @@ def allocate_synapses(
     diff_y = jnp.abs(grid_y[None, :] - centers[:, 1:2])
     dist = jnp.maximum(diff_x, diff_y)
 
-    noise = random.uniform(key, dist.shape) * 0.1
+    noise = jr.uniform(key, dist.shape) * 0.1
     _, top_indices = lax.top_k(-(dist + noise), num_synapses[0])
 
     mask_flat = jnp.zeros((N_centers, H * W), dtype=jnp.int32)
@@ -139,11 +217,11 @@ def receptive_fields(
     typ: Literal["somatic", "dendritic"] = "somatic", 
     num_channels: int = 1
 ) -> tuple[jnp.ndarray, jnp.ndarray]:
-    k1, k2 = random.split(key)
+    k1, k2 = jr.split(key)
     H, W, *_ = shape
     total_nodes = somata * dendrites if typ == "dendritic" else somata
     
-    flat_locs = random.choice(k1, H * W, shape=(total_nodes,), replace=True)
+    flat_locs = jr.choice(k1, H * W, shape=(total_nodes,), replace=True)
     center_x = flat_locs % W
     center_y = flat_locs // W
     centers = jnp.stack([center_x, center_y], axis=1)

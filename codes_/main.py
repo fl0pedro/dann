@@ -12,6 +12,7 @@ import json
 from optax import adamw
 from optax.losses import softmax_cross_entropy_with_integer_labels
 import opt_jax
+from models import get_model
 import jax
 import jax.numpy as jnp
 import jax.random as jr
@@ -72,7 +73,7 @@ def main(args: list[str] | None = None):
         if os.path.isfile(result_files) and not config.force:
             raise FileExistsError(f"This run has already been recorded: {result_files}")
 
-    key, model, *params = opt_jax.model(key, config)
+    key, model, *params = get_model(key, config)
 
     optimizer = adamw(config.lr)
     loss_fn = softmax_cross_entropy_with_integer_labels
