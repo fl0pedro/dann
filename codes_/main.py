@@ -29,6 +29,7 @@ def smart_parse_args(args: list[str] | None = None):
     parser.add_argument("--all-to-all", action="store_true")
     parser.add_argument("--conventional", action="store_true")
     parser.add_argument("--original", action="store_true")
+    parser.add_argument("--flexi", action="store_true")
     parser.add_argument("--local", action="store_true")
     parser.add_argument("--sparse", action="store_true")
     parser.add_argument("--rfs", choices=["somatic", "dendritic"])

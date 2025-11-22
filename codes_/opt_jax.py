@@ -276,48 +276,48 @@ def get_masks(key: jnp.ndarray, config) -> list[jnp.ndarray]:
 def get_indices_from_permutations(px, pys):
     return jnp.stack([pys[px], pys[px+1 % pys.size]])
 
-# def get_indices(key, config):
-#     indices_list = []
-#     for i in range(config.layers):
-#         key, k1, k2 = jr.split(key, 3)
-#         
-#         # input
-#         if i == 0:
-#             shape = config.input_shape[1:]
-#             input_size = config.input_size
-#             num_channels = config.input_shape[0]
-#         else:
-#             shape = squareish_shape(config.soma[i-1])
-#             input_size = config.soma[i-1]
-#             num_channels = 1
-# 
-#         # synapse -> dendrite
-#         # (nsyns*dends, dends*soma)
-#         if config.rfs:
-#             ... # rf
-#             permutations = ... # dends
-#         else:
-#             ... # random
-#             permutations = ... # nsyn*dends
-# 
-#         indices = get_indices(*permutations.transpose(2, 0, 1))
-#         indices_list.append(indices)
-# 
-#         # dendrite -> soma
-#         # (dends*soma, soma)
-#         total_dends = config.dends[i] * config.soma[i]
-#         
-#         if not config.sparse:
-#             ... # block diagonal (no permutation)
-#             permutations = jnp.arange(...).reshape(2, -1)
-#         else:
-#             ... # random
-#             permutations = ... # both are size soma
-# 
-#         indices = get_indices_from_permutations(*permutations)
-#         indices_list.append(indices)
-# 
-#     return indices_list
+def get_indices(key, config):
+    indices_list = []
+    for i in range(config.layers):
+        key, k1, k2 = jr.split(key, 3)
+        
+        # input
+        if i == 0:
+            shape = config.input_shape[1:]
+            input_size = config.input_size
+            num_channels = config.input_shape[0]
+        else:
+            shape = squareish_shape(config.soma[i-1])
+            input_size = config.soma[i-1]
+            num_channels = 1
+
+        # synapse -> dendrite
+        # (nsyns*dends, dends*soma)
+        if config.rfs:
+            ... # rf
+            permutations = ... # dends
+        else:
+            ... # random
+            permutations = ... # nsyn*dends
+
+        indices = get_indices(*permutations.transpose(2, 0, 1))
+        indices_list.append(indices)
+
+        # dendrite -> soma
+        # (dends*soma, soma)
+        total_dends = config.dends[i] * config.soma[i]
+        
+        if not config.sparse:
+            ... # block diagonal (no permutation)
+            permutations = jnp.arange(...).reshape(2, -1)
+        else:
+            ... # random
+            permutations = ... # both are size soma
+
+        indices = get_indices_from_permutations(*permutations)
+        indices_list.append(indices)
+
+    return indices_list
 
 
 def linear(key, input_size, output_size, mask=None):
@@ -342,6 +342,7 @@ def conv(key, input_shape, output_shape, kernel_shape, stride, local=False, padd
     else:
         w_shape = (*kernel_shape, input_shape[2], output_shape[2])
 
+    print(f"{input_shape=}, {output_shape=}, {kernel_shape=}, {stride=}, {w_shape=}")
     weight = he_normal()(key, w_shape)
     bias = jnp.zeros((output_shape[2],)) 
     dimensions = ('NHWC', 'HWIO', 'NHWC')
@@ -409,7 +410,7 @@ def build_layer(key, config, i, current_shape):
             stride, intermediate_shape = best_stride(current_shape, kernel_shape, dends*soma)
             intermediate_shape = squareish_shape(intermediate_shape)
         else:
-            stride = kernel_shape
+            stride = (1, 1)
             intermediate_shape = output_shape(current_shape, kernel_shape, stride)
 
         intermediate_shape = (*intermediate_shape, 1)
@@ -419,7 +420,7 @@ def build_layer(key, config, i, current_shape):
 
         # dendrite -> soma
         if config.rfs == "dendritic": # should be block diagonal*
-            ds_f, ds_w, ds_b = linear(k2, prod(intermediate_shape), soma)
+            ds_f, ds_w, ds_b = linear(k2, prod(intermediate_shape), soma) # make this block diagonal
             current_shape = (soma,)
         else:
             dend_kernel = squareish_shape(dends)
@@ -433,7 +434,7 @@ def build_layer(key, config, i, current_shape):
             stride, _ = best_stride(current_shape, kernel_shape, dends)
             intermediate_shape = (1,)
         else:
-            stride = kernel_shape
+            stride = (1, 1)
             intermediate_shape = (dends,)
 
         out_spatial = output_shape(current_shape, kernel_shape, stride)
@@ -444,7 +445,7 @@ def build_layer(key, config, i, current_shape):
         
         # dendrite -> soma
         if config.rfs == "dendritic": # should be block diagonal*
-            ds_f, ds_w, ds_b = linear(k2, prod(intermediate_shape)*soma, soma)
+            ds_f, ds_w, ds_b = linear(k2, prod(intermediate_shape)*soma, soma) # todo make this block diagonal
             current_shape = (soma,)
         else:
             out_spatial_2 = output_shape(out_spatial, kernel_shape, stride)
