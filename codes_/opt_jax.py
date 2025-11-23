@@ -6,6 +6,8 @@ import jax.numpy as jnp
 from jax import jit
 from tqdm import tqdm
 import optax
+import timeit
+from jax_peak_memory_monitor import PeakMemoryMonitor
 
 def sync_model(config, dataset_info):
     update_dends_and_soma(config)
@@ -205,9 +207,9 @@ def train_loop(key, model, params, dataloader, loss_fn, optimizer, batch_size, e
         params = optax.apply_updates(params, updates)
         return loss, outputs, params, opt_state
 
-    t = jnp.arange(100*32*32*3).reshape(100, 32, 32, 3)
-    _ = model(t/t.max(), *params)
-    return None, None
+    #t = jnp.arange(100*32*32*3).reshape(100, 32, 32, 3)
+    #_ = model(t/t.max(), *params)
+    #return None, None
     
     model = jit(model)
 
@@ -225,7 +227,9 @@ def train_loop(key, model, params, dataloader, loss_fn, optimizer, batch_size, e
             "acc": []
         }, "test": {
             "loss": [],
-            "acc": []
+            "acc": [],
+            "time": [],
+            "memory": []
         }
     }
 
@@ -273,6 +277,18 @@ def train_loop(key, model, params, dataloader, loss_fn, optimizer, batch_size, e
     
     res["test"]["loss"].append(local_loss)
     res["test"]["acc"].append(local_acc)
+
+    n, r = 10, 10
+    with PeakMemoryMonitor(0) as m:
+        times = timeit.repeat(lambda: [
+                    model(inputs, *params) 
+                    for inputs, outputs in dataloader
+                ], number=n, repeat=r)
+        times = jnp.array(times)
+    print(f"Speed after compilation: batches={n*len(dataloader)/times.mean():,.2f}±{len(dataloader)*times.std():.2f}it/s")
+
+    res["test"]["times"] = times
+    res["test"]["memory"] = m.peak()
 
     return params, res
 
