@@ -130,7 +130,7 @@ def conv(key, input_channel, output_channel, kernel_shape, stride, padding="SAME
 
 def local_conv(key, input_channel, output_shape, kernel_shape, stride, padding="VALID", input_dilation=None, kernel_dilation=None):
     fused_input = input_channel * kernel_shape[0] * kernel_shape[1]
-    weight = he_normal()(key, (output_shape[1], output_shape[0], fused_input, output_shape[2]))
+    weight = he_normal()(key, (output_shape[0], output_shape[1], fused_input, output_shape[2]))
     bias = jnp.zeros((output_shape[2],)) 
     dimensions = ('NHWC', 'HWIO', 'NHWC')
 
@@ -146,6 +146,52 @@ def local_conv(key, input_channel, output_shape, kernel_shape, stride, padding="
 
     return apply, weight, bias
 
+def bilinear_sampler(img, coords):
+    H, W = img.shape[1:3]
+    x, y = coords[..., 1], coords[..., 0]
+    x0, y0 = jnp.floor(x).astype(jnp.int32), jnp.floor(y).astype(jnp.int32)
+    x1, y1 = x0 + 1, y0 + 1
+    x0, x1 = jnp.clip(x0, 0, W - 1), jnp.clip(x1, 0, W - 1)
+    y0, y1 = jnp.clip(y0, 0, H - 1), jnp.clip(y1, 0, H - 1)
+
+    Ia, Ib = img[:, y0, x0, :], img[:, y1, x0, :]
+    Ic, Id = img[:, y0, x1, :], img[:, y1, x1, :]
+    wa, wb = (x1 - x) * (y1 - y), (x1 - x) * (y - y0)
+    wc, wd = (x - x0) * (y1 - y), (x - x0) * (y - y0)
+    return Ia * wa[..., None] + Ib * wb[..., None] + Ic * wc[..., None] + Id * wd[..., None]
+
+def flexi(key, input_shape, output_channel, kernel_shape, output_grid):
+    k1, k_idx = jr.split(key)
+    oh, ow = output_grid
+    
+    indices = jr.uniform(k_idx, (oh, ow, *kernel_shape, 2))
+    indices = indices * jnp.array([input_shape[0], input_shape[1]])
+
+    weight = he_normal()(k1, (*kernel_shape, input_shape[-1], output_channel))
+    bias = jnp.zeros((1,))
+
+    def apply(x, w, b, idx):
+        patches = bilinear_sampler(x, idx)
+        return jnp.einsum('nijklc, klco -> nijo', patches, w) + b
+
+    return apply, weight, bias, indices
+
+def local_flexi(key, input_shape, output_channel, kernel_shape, output_grid):
+    k1, k_idx = jr.split(key)
+    oh, ow = output_grid
+    
+    indices = jr.uniform(k_idx, (oh, ow, *kernel_shape, 2))
+    indices = indices * jnp.array([input_shape[0], input_shape[1]])
+
+    weight = he_normal()(k1, (oh, ow, *kernel_shape, input_shape[-1], output_channel))
+    bias = jnp.zeros((output_channel,))
+
+    def apply(x, w, b, idx):
+        patches = bilinear_sampler(x, idx)
+        return jnp.einsum('nijklc, ijklco -> nijo', patches, w) + b
+
+    return apply, weight, bias, indices
+
 def squareish_shape(n):
     limit = isqrt(n)
     for h in range(limit, 0, -1):
@@ -154,19 +200,20 @@ def squareish_shape(n):
             return (h, w)
     return (1, n)
 
-def conv_output_shape(input_shape, kernel_shape, stride, padding="VALID"):
-    ih, iw, ic = input_shape
+def conv_output_shape(input_shape, output_channel, kernel_shape, stride, padding="VALID"):
+    ih, iw, _ = input_shape
     kh, kw = kernel_shape
     sh, sw = stride
+    oc = output_channel
+
     if padding == "VALID":
-        oh = (ih-kh + 1) // sh
-        ow = (iw-kw + 1) // sw
-        print(oh, ow)
-        return oh, ow, ic
+        oh = (ih-kh) // sh + 1
+        ow = (iw-kw) // sw + 1
+        return oh, ow, oc
     elif padding == "SAME":
         oh = (ih + sh - 1) // sh
         ow = (iw + sw - 1) // sw
-        return oh, ow, ic
+        return oh, ow, oc
     else:
         raise ValueError
 
@@ -177,7 +224,7 @@ def best_stride_and_channels(input_shape, kernel_shape, target_volume, padding="
     max_w = input_shape[1]//2
 
     for sh, sw in product(range(1, max_h + 1), range(1, max_w + 1)):
-        oh, ow, _ = conv_output_shape(input_shape, kernel_shape, (sh, sw), padding)
+        oh, ow, _ = conv_output_shape(input_shape, None, kernel_shape, (sh, sw), padding)
         
         if oh*ow == 0:
             continue
@@ -187,9 +234,6 @@ def best_stride_and_channels(input_shape, kernel_shape, target_volume, padding="
             abs(oh*ow*ch - target_volume), 
             sh, sw, (oh, ow, ch)
         ))
-
-    if not candidates:
-        return (1, 1), (1, 1, target_volume) if target_volume > 0 else (1, 1), (1, 1, 1)
 
     _, sh, sw, output_shape = min(candidates, key=lambda x: (x[0], abs(x[1] - x[2])))
     
@@ -213,12 +257,11 @@ def conv_somatic_layer(key, nsyns, dends, soma, input_shape):
     key, k1, k2 = jr.split(key, 3)
     sd_ks = squareish_shape(nsyns)
     stride = (1, 1)
-    intermediate_shape = conv_output_shape(input_shape, sd_ks, stride, "SAME")
-    print(intermediate_shape)
+    intermediate_shape = conv_output_shape(input_shape, dends, sd_ks, stride, "SAME")
     sd_f, sd_w, sd_b = conv(k1, input_shape[-1], intermediate_shape[-1], sd_ks, stride)
 
     ds_ks = squareish_shape(dends)
-    output_shape = conv_output_shape(input_shape, ds_ks, stride, "SAME")
+    output_shape = conv_output_shape(input_shape, soma, ds_ks, stride, "SAME")
     ds_f, ds_w, ds_b = conv(k2, intermediate_shape[-1], output_shape[-1], ds_ks, stride)
 
     print(f"{input_shape=}, {sd_ks=}, {stride=}, {intermediate_shape=}, {ds_ks=}, {output_shape=}")
@@ -228,9 +271,9 @@ def conv_somatic_layer(key, nsyns, dends, soma, input_shape):
 def conv_dendritic_layer(key, nsyns, dends, soma, input_shape):
     key, k1, k2 = jr.split(key, 3)
     sd_ks = squareish_shape(nsyns)
-    stride, intermediate_shape = best_stride_and_channels(input_shape, sd_ks, dends*soma, "SAME")
+    stride, intermediate_shape = best_stride_and_channels(input_shape, sd_ks, dends, "SAME")
     sd_f, sd_w, sd_b = conv(k1, input_shape[-1], intermediate_shape[-1], sd_ks, stride)
-    ds_f, ds_w, ds_b = block_linear(k2, prod(intermediate_shape), soma)
+    ds_f, ds_w, ds_b = linear(k2, prod(intermediate_shape), soma)
     output_shape = (soma,)
 
     print(f"{input_shape=}, {sd_ks=}, {stride=}, {intermediate_shape=}, {output_shape=}")
@@ -241,15 +284,17 @@ def local_conv_somatic_layer(key, nsyns, dends, soma, input_shape):
     key, k1, k2 = jr.split(key, 3)
     sd_ks = squareish_shape(nsyns)
     stride = (1, 1)
-    intermediate_shape = conv_output_shape(input_shape, sd_ks, stride)
+    intermediate_shape = conv_output_shape(input_shape, 1, sd_ks, stride)
     print(intermediate_shape)
     sd_f, sd_w, sd_b = local_conv(k1, input_shape[-1], intermediate_shape, sd_ks, stride)
 
     ds_ks = squareish_shape(dends)
-    output_shape = conv_output_shape(input_shape, ds_ks, ds_ks)
+    stride = ds_ks
+    output_shape = conv_output_shape(intermediate_shape, 1, ds_ks, stride)
     if any(x==0 for x in output_shape):
-        output_shape = conv_output_shape(input_shape, ds_ks, (1, 1))
-    ds_f, ds_w, ds_b = local_conv(k2, intermediate_shape[-1], output_shape, ds_ks, ds_ks)
+        stride = (1, 1)
+        output_shape = conv_output_shape(intermediate_shape, ds_ks, stride)
+    ds_f, ds_w, ds_b = local_conv(k2, intermediate_shape[-1], output_shape, ds_ks, stride)
 
     print(f"{input_shape=}, {sd_ks=}, {stride=}, {intermediate_shape=}, {ds_ks=}, {output_shape=}")
 
@@ -258,9 +303,9 @@ def local_conv_somatic_layer(key, nsyns, dends, soma, input_shape):
 def local_conv_dendritic_layer(key, nsyns, dends, soma, input_shape):
     key, k1, k2 = jr.split(key, 3)
     sd_ks = squareish_shape(nsyns)
-    stride, intermediate_shape = best_stride_and_channels(input_shape, sd_ks, dends*soma)
+    stride, intermediate_shape = best_stride_and_channels(input_shape, sd_ks, dends)
     sd_f, sd_w, sd_b = local_conv(k1, input_shape[-1], intermediate_shape, sd_ks, stride)
-    ds_f, ds_w, ds_b = block_linear(k2, prod(intermediate_shape), soma)
+    ds_f, ds_w, ds_b = linear(k2, prod(intermediate_shape), soma)
     output_shape = (soma,)
 
     print(f"{input_shape=}, {sd_ks=}, {stride=}, {intermediate_shape=}, {output_shape=}")
@@ -268,10 +313,73 @@ def local_conv_dendritic_layer(key, nsyns, dends, soma, input_shape):
     return key, LayerParams(sd_w, sd_b, ds_w, ds_b), LayerOps(sd_f, ds_f), output_shape
 
 def flexi_somatic_layer(key, nsyns, dends, soma, input_shape):
-    ...
+    key, k1, k2 = jr.split(key, 3)
+    sd_ks = squareish_shape(nsyns)
+    
+    stride = (1, 1)
+    int_shape = conv_output_shape(input_shape, dends, sd_ks, stride, "SAME")
+    
+    sd_f, sd_w, sd_b, sd_idx = flexi(k1, input_shape, int_shape[-1], sd_ks, int_shape[:2])
+
+    ds_ks = squareish_shape(dends)
+    output_shape = conv_output_shape(input_shape, soma, ds_ks, stride, "SAME")
+    ds_f, ds_w, ds_b = conv(k2, int_shape[-1], output_shape[-1], ds_ks, stride)
+
+    print(f"{input_shape=}, {sd_ks=}, {int_shape=}, {ds_ks=}, {output_shape=}")
+    
+    return key, LayerParams(sd_w, sd_b, ds_w, ds_b), LayerOps(sd_f, ds_f), output_shape, sd_idx
 
 def flexi_dendritic_layer(key, nsyns, dends, soma, input_shape):
-    ...
+    key, k1, k2 = jr.split(key, 3)
+    sd_ks = squareish_shape(nsyns)
+    
+    stride, int_shape = best_stride_and_channels(input_shape, sd_ks, dends, "SAME")
+    
+    sd_f, sd_w, sd_b, sd_idx = flexi(k1, input_shape, int_shape[-1], sd_ks, int_shape[:2])
+    ds_f, ds_w, ds_b = linear(k2, prod(int_shape), soma)
+    output_shape = (soma,)
+
+    print(f"{input_shape=}, {sd_ks=}, {stride=}, {int_shape=}, {output_shape=}")
+
+    return key, LayerParams(sd_w, sd_b, ds_w, ds_b), LayerOps(sd_f, ds_f), output_shape, sd_idx
+
+def local_flexi_somatic_layer(key, nsyns, dends, soma, input_shape):
+    key, k1, k2 = jr.split(key, 3)
+    sd_ks = squareish_shape(nsyns)
+    
+    stride = (1, 1)
+    int_shape_calc = conv_output_shape(input_shape, 1, sd_ks, stride) 
+    int_shape = (*int_shape_calc[:2], dends)
+
+    sd_f, sd_w, sd_b, sd_idx = local_flexi(k1, input_shape, dends, sd_ks, int_shape[:2])
+
+    ds_ks = squareish_shape(dends)
+    stride = ds_ks
+    output_shape = conv_output_shape(int_shape, 1, ds_ks, stride)
+    
+    if any(x==0 for x in output_shape):
+        stride = (1, 1)
+        output_shape = conv_output_shape(int_shape, ds_ks, stride)
+        
+    ds_f, ds_w, ds_b = local_conv(k2, int_shape[-1], output_shape, ds_ks, stride)
+
+    print(f"{input_shape=}, {sd_ks=}, {int_shape=}, {ds_ks=}, {output_shape=}")
+
+    return key, LayerParams(sd_w, sd_b, ds_w, ds_b), LayerOps(sd_f, ds_f), output_shape, sd_idx
+
+def local_flexi_dendritic_layer(key, nsyns, dends, soma, input_shape):
+    key, k1, k2 = jr.split(key, 3)
+    sd_ks = squareish_shape(nsyns)
+    
+    stride, int_shape = best_stride_and_channels(input_shape, sd_ks, dends)
+    
+    sd_f, sd_w, sd_b, sd_idx = local_flexi(k1, input_shape, int_shape[-1], sd_ks, int_shape[:2])
+    ds_f, ds_w, ds_b = linear(k2, prod(int_shape), soma)
+    output_shape = (soma,)
+
+    print(f"{input_shape=}, {sd_ks=}, {stride=}, {int_shape=}, {output_shape=}")
+
+    return key, LayerParams(sd_w, sd_b, ds_w, ds_b), LayerOps(sd_f, ds_f), output_shape, sd_idx
 
 # def build_layer(key, config, i, current_shape):
 #     key, k1, k2 = jr.split(key, 3)
@@ -347,6 +455,7 @@ def get_model(key, config):
     params = []
     ops = []
     masks = []
+    indices = []
 
     key, mask_key = jr.split(key)
     
@@ -360,23 +469,33 @@ def get_model(key, config):
         fn = maskable_ann_layer
     elif config.conventional:
         fn = small_ann_layer
-    elif not config.local and config.rfs == "somatic":
+    elif not config.local and not config.flexi and config.rfs == "somatic":
         fn = conv_somatic_layer
-    elif not config.local and config.rfs == "dendritic":
+    elif not config.local and not config.flexi and config.rfs == "dendritic":
         fn = conv_dendritic_layer
-    elif config.local and config.rfs == "somatic":
+    elif config.local and not config.flexi and config.rfs == "somatic":
         fn = local_conv_somatic_layer
-    elif config.local and config.rfs == "dendritic":
+    elif config.local and not config.flexi and config.rfs == "dendritic":
         fn = local_conv_dendritic_layer
+    elif not config.local and config.flexi and config.rfs == "somatic":
+        fn = flexi_somatic_layer
+    elif not config.local and config.flexi and config.rfs == "dendritic":
+        fn = flexi_dendritic_layer
+    elif config.local and config.flexi and config.rfs == "somatic":
+        fn = local_flexi_somatic_layer
+    elif config.local and config.flexi and config.rfs == "dendritic":
+        fn = local_flexi_dendritic_layer
+
     # TODO flexi
 
     for i, layer_shape in enumerate(zip(config.nsyns, config.dends, config.soma)):
-        key, layer_params, layer_ops, current_shape = fn(key, *layer_shape, current_shape)
+        key, layer_params, layer_ops, current_shape, *idxs = fn(key, *layer_shape, current_shape)
 
         ops.append(layer_ops)
         params.append(layer_params)
         if config.original:
             masks.append(LayerMasks(*mask_list[i*2:i*2+2]))
+        indices += idxs
 
     print(*jax.tree.map(lambda x: x.shape, params), sep='\n')
 
@@ -392,14 +511,14 @@ def get_model(key, config):
         (getattr(p, m) == 0).sum() 
         for p in masks
         for m in ("sd", "ds") 
-    )
+    ) # + idxs
 
     print(f"params={total_size}")
     if masks:
         print(f"masked={total_masked}\nactive={total_size-total_masked}")
     #exit()
 
-    def predict(x, params, final_params, dropout_key=None):
+    def predict(x, params, final_params, indices, dropout_key=None):
         if dropout_key is not None:
             keys = jr.split(dropout_key, len(config.layers)*2)
 
@@ -407,10 +526,15 @@ def get_model(key, config):
         x = jnp.array(x, dtype=jnp.float32)
         print(x.shape)
 
+        if indices:
+            indices = iter(indices)
+            print
+
         for i, layer in enumerate(params):
             # synapse/soma -> dendrite
             sd_w = layer.sd_w*masks[i].sd if masks else layer.sd_w
-            x = ops[i].sd(x, sd_w, layer.sd_b)
+            args = (next(indices),) if indices else ()
+            x = ops[i].sd(x, sd_w, layer.sd_b, *args)
             if dropout_key is not None:
                 keep = jr.bernoulli(keys[i], config.drop_rate, x.shape)
                 x = jnp.where(keep,x / config.drop_rate, 0)
@@ -428,5 +552,5 @@ def get_model(key, config):
 
         return f_final(x, *final_params)
 
-    return key, predict, params, final_params
+    return key, predict, params, final_params, indices
 

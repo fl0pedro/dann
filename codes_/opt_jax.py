@@ -62,7 +62,8 @@ def update_model_id_and_name(config): # make sure defaults don't override custom
         'sparse_ann', 'sparse_ann_global_rfs', 'sparse_ann_local_rfs', 
         'dend_ann_all_to_all', 'sparse_ann_all_to_all', 'locally_connected'
         'conv_global_rfs', 'conv_local_rfs', 'local_conv_global_rfs', 'local_conv_local_rfs',
-        'flexi_patches_global_rfs', 'flexi_patches_local_rfs'
+        'flexi_patches_global_rfs', 'flexi_patches_local_rfs', 
+        'local_flexi_patches_global_rfs', 'local_flexi_patches_local_rfs', 
     ]
 
     if config.model_id is None:
@@ -128,6 +129,14 @@ def update_dnn_values(config):
             config.flexi = True
             config.rfs = "somatic"
         case 17:
+            config.flexi = True
+            config.rfs = "dendritic"
+        case 18:
+            config.local = True
+            config.flexi = True
+            config.rfs = "somatic"
+        case 19:
+            config.local = True
             config.flexi = True
             config.rfs = "dendritic"
         case _:
@@ -196,8 +205,9 @@ def train_loop(key, model, params, dataloader, loss_fn, optimizer, batch_size, e
         params = optax.apply_updates(params, updates)
         return loss, outputs, params, opt_state
 
-    t = next(iter(dataloader["train"]))
-    _ = model(t[0], *params)
+    t = jnp.arange(100*32*32*3).reshape(100, 32, 32, 3)
+    _ = model(t/t.max(), *params)
+    return None, None
     
     model = jit(model)
 
