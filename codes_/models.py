@@ -257,26 +257,26 @@ def conv_somatic_layer(key, nsyns, dends, soma, input_shape):
     key, k1, k2 = jr.split(key, 3)
     sd_ks = squareish_shape(nsyns)
     stride = (1, 1)
-    intermediate_shape = conv_output_shape(input_shape, dends, sd_ks, stride, "SAME")
-    sd_f, sd_w, sd_b = conv(k1, input_shape[-1], intermediate_shape[-1], sd_ks, stride)
+    int_shape = conv_output_shape(input_shape, dends, sd_ks, stride, "SAME")
+    sd_f, sd_w, sd_b = conv(k1, input_shape[-1], int_shape[-1], sd_ks, stride)
 
     ds_ks = squareish_shape(dends)
     output_shape = conv_output_shape(input_shape, soma, ds_ks, stride, "SAME")
-    ds_f, ds_w, ds_b = conv(k2, intermediate_shape[-1], output_shape[-1], ds_ks, stride)
+    ds_f, ds_w, ds_b = conv(k2, int_shape[-1], output_shape[-1], ds_ks, stride)
 
-    print(f"{input_shape=}, {sd_ks=}, {stride=}, {intermediate_shape=}, {ds_ks=}, {output_shape=}")
+    print(f"{input_shape=}, {sd_ks=}, {stride=}, {int_shape=}, {ds_ks=}, {output_shape=}")
 
     return key, LayerParams(sd_w, sd_b, ds_w, ds_b), LayerOps(sd_f, ds_f), output_shape
 
 def conv_dendritic_layer(key, nsyns, dends, soma, input_shape):
     key, k1, k2 = jr.split(key, 3)
     sd_ks = squareish_shape(nsyns)
-    stride, intermediate_shape = best_stride_and_channels(input_shape, sd_ks, dends, "SAME")
-    sd_f, sd_w, sd_b = conv(k1, input_shape[-1], intermediate_shape[-1], sd_ks, stride)
-    ds_f, ds_w, ds_b = linear(k2, prod(intermediate_shape), soma)
+    stride, int_shape = best_stride_and_channels(input_shape, sd_ks, dends, "SAME")
+    sd_f, sd_w, sd_b = conv(k1, input_shape[-1], int_shape[-1], sd_ks, stride)
+    ds_f, ds_w, ds_b = linear(k2, prod(int_shape), soma)
     output_shape = (soma,)
 
-    print(f"{input_shape=}, {sd_ks=}, {stride=}, {intermediate_shape=}, {output_shape=}")
+    print(f"{input_shape=}, {sd_ks=}, {stride=}, {int_shape=}, {output_shape=}")
 
     return key, LayerParams(sd_w, sd_b, ds_w, ds_b), LayerOps(sd_f, ds_f), output_shape
 
@@ -284,31 +284,31 @@ def local_conv_somatic_layer(key, nsyns, dends, soma, input_shape):
     key, k1, k2 = jr.split(key, 3)
     sd_ks = squareish_shape(nsyns)
     stride = (1, 1)
-    intermediate_shape = conv_output_shape(input_shape, 1, sd_ks, stride)
-    print(intermediate_shape)
-    sd_f, sd_w, sd_b = local_conv(k1, input_shape[-1], intermediate_shape, sd_ks, stride)
+    int_shape = conv_output_shape(input_shape, 1, sd_ks, stride)
+    print(int_shape)
+    sd_f, sd_w, sd_b = local_conv(k1, input_shape[-1], int_shape, sd_ks, stride)
 
     ds_ks = squareish_shape(dends)
     stride = ds_ks
-    output_shape = conv_output_shape(intermediate_shape, 1, ds_ks, stride)
+    output_shape = conv_output_shape(int_shape, 1, ds_ks, stride)
     if any(x==0 for x in output_shape):
         stride = (1, 1)
-        output_shape = conv_output_shape(intermediate_shape, ds_ks, stride)
-    ds_f, ds_w, ds_b = local_conv(k2, intermediate_shape[-1], output_shape, ds_ks, stride)
+        output_shape = conv_output_shape(int_shape, ds_ks, stride)
+    ds_f, ds_w, ds_b = local_conv(k2, int_shape[-1], output_shape, ds_ks, stride)
 
-    print(f"{input_shape=}, {sd_ks=}, {stride=}, {intermediate_shape=}, {ds_ks=}, {output_shape=}")
+    print(f"{input_shape=}, {sd_ks=}, {stride=}, {int_shape=}, {ds_ks=}, {output_shape=}")
 
     return key, LayerParams(sd_w, sd_b, ds_w, ds_b), LayerOps(sd_f, ds_f), output_shape
 
 def local_conv_dendritic_layer(key, nsyns, dends, soma, input_shape):
     key, k1, k2 = jr.split(key, 3)
     sd_ks = squareish_shape(nsyns)
-    stride, intermediate_shape = best_stride_and_channels(input_shape, sd_ks, dends)
-    sd_f, sd_w, sd_b = local_conv(k1, input_shape[-1], intermediate_shape, sd_ks, stride)
-    ds_f, ds_w, ds_b = linear(k2, prod(intermediate_shape), soma)
+    stride, int_shape = best_stride_and_channels(input_shape, sd_ks, dends)
+    sd_f, sd_w, sd_b = local_conv(k1, input_shape[-1], int_shape, sd_ks, stride)
+    ds_f, ds_w, ds_b = linear(k2, prod(int_shape), soma)
     output_shape = (soma,)
 
-    print(f"{input_shape=}, {sd_ks=}, {stride=}, {intermediate_shape=}, {output_shape=}")
+    print(f"{input_shape=}, {sd_ks=}, {stride=}, {int_shape=}, {output_shape=}")
 
     return key, LayerParams(sd_w, sd_b, ds_w, ds_b), LayerOps(sd_f, ds_f), output_shape
 
@@ -401,50 +401,50 @@ def local_flexi_dendritic_layer(key, nsyns, dends, soma, input_shape):
 #         kernel_shape = squareish_shape(nsyns)
 #         
 #         if config.rfs == "dendritic":
-#             stride, intermediate_shape = best_stride(current_shape, kernel_shape, dends*soma)
-#             intermediate_shape = squareish_shape(intermediate_shape)
+#             stride, int_shape = best_stride(current_shape, kernel_shape, dends*soma)
+#             int_shape = squareish_shape(int_shape)
 #         else:
 #             stride = (1, 1)
-#             intermediate_shape = conv_output_shape(current_shape, kernel_shape, stride)
+#             int_shape = conv_output_shape(current_shape, kernel_shape, stride)
 # 
-#         intermediate_shape = (*intermediate_shape, 1)
+#         int_shape = (*int_shape, 1)
 # 
 #         # synapse/soma -> dendrite
-#         sd_f, sd_w, sd_b = conv(k1, current_shape, intermediate_shape, kernel_shape, stride, config.local)
+#         sd_f, sd_w, sd_b = conv(k1, current_shape, int_shape, kernel_shape, stride, config.local)
 # 
 #         # dendrite -> soma
 #         if config.rfs == "dendritic": # should be block diagonal*
-#             ds_f, ds_w, ds_b = linear(k2, prod(intermediate_shape), soma) # make this block diagonal
+#             ds_f, ds_w, ds_b = linear(k2, prod(int_shape), soma) # make this block diagonal
 #             current_shape = (soma,)
 #         else:
 #             dend_kernel = squareish_shape(dends)
-#             current_shape = conv_output_shape(intermediate_shape, dend_kernel, stride)
-#             ds_f, ds_w, ds_b = conv(k2, intermediate_shape, (*current_shape, 1), dend_kernel, stride, config.local)
+#             current_shape = conv_output_shape(int_shape, dend_kernel, stride)
+#             ds_f, ds_w, ds_b = conv(k2, int_shape, (*current_shape, 1), dend_kernel, stride, config.local)
 # 
 #     elif config.rfs and not config.local: # non local rfs
 #         kernel_shape = squareish_shape(nsyns)
 #         
-#         intermediate_shape = current_shape[:-1]
+#         int_shape = current_shape[:-1]
 #         if config.rfs == "dendritic":
 #             stride, _ = best_stride(current_shape, kernel_shape, dends*soma, "SAME")
-#             intermediate_shape += (1,)
+#             int_shape += (1,)
 #         else:
 #             stride = (1, 1)
-#             intermediate_shape += (dends,)
+#             int_shape += (dends,)
 # 
 #         # synapse/soma -> dendrite
-#         sd_f, sd_w, sd_b = conv(k1, current_shape, intermediate_shape, kernel_shape, stride, config.local, "SAME", pooling=True)
+#         sd_f, sd_w, sd_b = conv(k1, current_shape, int_shape, kernel_shape, stride, config.local, "SAME", pooling=True)
 # 
 #         
 #         # dendrite -> soma
 #         if config.rfs == "dendritic": # should be block diagonal*
-#             ds_f, ds_w, ds_b = linear(k2, prod(intermediate_shape[:-1]), soma) # todo make this block diagonal
+#             ds_f, ds_w, ds_b = linear(k2, prod(int_shape[:-1]), soma) # todo make this block diagonal
 #             current_shape = (soma,)
 #         else:
 #             dend_kernel = squareish_shape(dends)
-#             current_shape = (*intermediate_shape[:-1], soma)
-#             ds_f, ds_w, ds_b = conv(k2, (*intermediate_shape[:-1], 1), current_shape, dend_kernel, stride, config.local, "SAME", pooling=True)
-#             current_shape = (*intermediate_shape[:-1], 1)
+#             current_shape = (*int_shape[:-1], soma)
+#             ds_f, ds_w, ds_b = conv(k2, (*int_shape[:-1], 1), current_shape, dend_kernel, stride, config.local, "SAME", pooling=True)
+#             current_shape = (*int_shape[:-1], 1)
 # 
 #     else:
 #         raise ValueError
@@ -524,11 +524,10 @@ def get_model(key, config):
 
         # kinda dumb :I would be nice if we preprocessed it to be this way :) 
         x = jnp.array(x, dtype=jnp.float32)
-        print(x.shape)
+        #print(x.shape)
 
         if indices:
             indices = iter(indices)
-            print
 
         for i, layer in enumerate(params):
             # synapse/soma -> dendrite
@@ -539,7 +538,7 @@ def get_model(key, config):
                 keep = jr.bernoulli(keys[i], config.drop_rate, x.shape)
                 x = jnp.where(keep,x / config.drop_rate, 0)
             x = leaky_relu(x, 0.1)
-            print(x.shape)
+            #print(x.shape)
 
             # dendrite -> soma
             ds_w = layer.ds_w*masks[i].ds if masks else layer.ds_w
@@ -548,7 +547,7 @@ def get_model(key, config):
                 keep = jr.bernoulli(keys[i], config.drop_rate, x.shape)
                 x = jnp.where(keep,x / config.drop_rate, 0)
             x = leaky_relu(x, 0.1)
-            print(x.shape)
+            #print(x.shape)
 
         return f_final(x, *final_params)
 
