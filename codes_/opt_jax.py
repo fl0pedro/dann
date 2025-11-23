@@ -278,17 +278,20 @@ def train_loop(key, model, params, dataloader, loss_fn, optimizer, batch_size, e
     res["test"]["loss"].append(local_loss)
     res["test"]["acc"].append(local_acc)
 
-    n, r = 10, 10
-    with PeakMemoryMonitor(0) as m:
-        times = timeit.repeat(lambda: [
-                    model(inputs, *params) 
-                    for inputs, outputs in dataloader
-                ], number=n, repeat=r)
-        times = jnp.array(times)
-    print(f"Speed after compilation: batches={n*len(dataloader)/times.mean():,.2f}±{len(dataloader)*times.std():.2f}it/s")
+    # n, r = 10, 10
+    # times = []
+    # with PeakMemoryMonitor(0) as m:
+    #     times += timeit.repeat(lambda: [
+    #                 model(inputs, *params)
+    #                 for inputs, outputs in dataloader["test"]
+    #             ], number=n, repeat=r)
+    #     print(times)
+    # #print(f"Speed after compilation: batches={n*len(dataloader)/times.mean():,.2f}±{len(dataloader)*times.std():.2f}it/s")
 
-    res["test"]["times"] = times
-    res["test"]["memory"] = m.peak()
+    # print(times[0])
+    # print(m.peak)
+    # res["test"]["times"] = times
+    # res["test"]["memory"] = m.peak
 
     return params, res
 
